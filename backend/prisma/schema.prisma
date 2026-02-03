@@ -1,0 +1,337 @@
+// Prisma Schema for TodoList Collaboration
+// Based on ERD document - 13 entities
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_UNASSIGNED
+  TASK_STATUS_CHANGED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  COMMENT_ADDED
+  COMMENT_REPLY
+  MENTIONED
+  WORKSPACE_INVITE
+  PROJECT_CREATED
+}
+
+// ==================== MODELS ====================
+
+// 1. User - Người dùng hệ thống
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password      String
+  name          String
+  avatar        String?
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  ownedWorkspaces      Workspace[]
+  workspaceMemberships WorkspaceMember[]
+  createdProjects      Project[]
+  createdTasks         Task[]
+  taskAssignments      TaskAssignment[]
+  comments             Comment[]
+  attachments          Attachment[]
+  notifications        Notification[]      @relation("NotificationRecipient")
+  actorNotifications   Notification[]      @relation("NotificationActor")
+  activityLogs         ActivityLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// 2. Workspace - Không gian làm việc nhóm
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members      WorkspaceMember[]
+  projects     Project[]
+  labels       Label[]
+  activityLogs ActivityLog[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+// 3. WorkspaceMember - Thành viên trong workspace
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// 4. Project - Dự án trong workspace
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  workspaceId String
+  createdById String
+  status      ProjectStatus @default(ACTIVE)
+  isPinned    Boolean       @default(false)
+  color       String        @default("#3B82F6")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+  tasks     Task[]
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+// 5. Task - Công việc cần thực hiện (Core Entity)
+model Task {
+  id             String       @id @default(uuid())
+  title          String
+  description    String?
+  projectId      String
+  createdById    String
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(NORMAL)
+  dueDate        DateTime?
+  startDate      DateTime?
+  completedAt    DateTime?
+  position       Int          @default(0)
+  estimatedHours Decimal?     @db.Decimal(5, 2)
+  actualHours    Decimal?     @db.Decimal(5, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  subtasks    Subtask[]
+  assignments TaskAssignment[]
+  labels      TaskLabel[]
+  comments    Comment[]
+  attachments Attachment[]
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+// 6. Subtask - Công việc con của task
+model Subtask {
+  id          String   @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+// 7. TaskAssignment - Phân công task cho user
+model TaskAssignment {
+  id         String   @id @default(uuid())
+  taskId     String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignments")
+}
+
+// 8. Label - Nhãn phân loại task (Workspace Level - Shared)
+model Label {
+  id          String   @id @default(uuid())
+  name        String
+  color       String
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     TaskLabel[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("labels")
+}
+
+// 9. TaskLabel - Liên kết task với label (Junction Table)
+model TaskLabel {
+  id      String @id @default(uuid())
+  taskId  String
+  labelId String
+
+  // Relations
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+  @@index([taskId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+// 10. Comment - Bình luận trên task
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  taskId    String
+  authorId  String
+  parentId  String?
+  isEdited  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  task    Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author  User      @relation(fields: [authorId], references: [id])
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+// 11. Attachment - File đính kèm
+model Attachment {
+  id           String   @id @default(uuid())
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+  taskId       String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@index([uploadedById])
+  @@map("attachments")
+}
+
+// 12. Notification - Thông báo
+model Notification {
+  id            String           @id @default(uuid())
+  type          NotificationType
+  title         String
+  message       String?
+  userId        String
+  actorId       String?
+  referenceId   String?
+  referenceType String?
+  isRead        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+
+  // Relations
+  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// 13. ActivityLog - Lịch sử hoạt động
+model ActivityLog {
+  id          String   @id @default(uuid())
+  action      String
+  entityType  String
+  entityId    String
+  userId      String
+  workspaceId String
+  oldValue    Json?
+  newValue    Json?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
