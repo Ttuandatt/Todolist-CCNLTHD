@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ==================== ENUMS ====================
@@ -83,6 +82,9 @@ model User {
   notifications        Notification[]      @relation("NotificationRecipient")
   actorNotifications   Notification[]      @relation("NotificationActor")
   activityLogs         ActivityLog[]
+  invitations          Invitation[]
+  refreshTokens        RefreshToken[]
+  passwordResets       PasswordReset[]
 
   @@index([email])
   @@map("users")
@@ -103,6 +105,7 @@ model Workspace {
   projects     Project[]
   labels       Label[]
   activityLogs ActivityLog[]
+  invitations  Invitation[]
 
   @@index([ownerId])
   @@map("workspaces")
@@ -334,4 +337,60 @@ model ActivityLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@map("activity_logs")
+}
+
+// 14. Invitation - Lời mời tham gia workspace
+model Invitation {
+  id          String         @id @default(uuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole  @default(MEMBER)
+  token       String         @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation(fields: [invitedById], references: [id])
+
+  @@index([token])
+  @@index([workspaceId])
+  @@index([email])
+  @@map("invitations")
+}
+
+// 15. RefreshToken - Lưu trữ refresh token cho JWT
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// 16. PasswordReset - Token đặt lại mật khẩu
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
 }
