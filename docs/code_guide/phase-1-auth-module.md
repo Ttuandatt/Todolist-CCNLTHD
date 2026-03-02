@@ -206,7 +206,7 @@ Passport.js dùng **Strategy pattern** — mỗi cách xác thực (JWT, Google 
 ### Code
 
 ```typescript
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 // PassportStrategy — lớp trung gian giữa NestJS và Passport.js
 // Nó giúp Strategy hoạt động trong hệ thống DI của NestJS
@@ -215,13 +215,20 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 // Strategy — JWT Strategy gốc từ thư viện passport-jwt
 // ExtractJwt — helper cung cấp các cách rút JWT từ request
 
+import { Request } from 'express';
+import { PrismaService } from '../../prisma/prisma.service';
+// Import PrismaService để kiểm tra InvalidatedToken (Token Blacklist)
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   // PassportStrategy(Strategy) trả về một class
   // JwtStrategy kế thừa class đó → tự động đăng ký vào Passport
   // Tên strategy mặc định là 'jwt' (sẽ dùng với AuthGuard('jwt'))
 
-  constructor() {
+  private request: Request;
+  // Lưu reference đến request để dùng trong validate()
+
+  constructor(private prisma: PrismaService) {
     super({
       // Cấu hình cho JWT Strategy:
 
@@ -237,8 +244,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       secretOrKey: process.env.JWT_SECRET,
       // Secret key dùng để VERIFY token — phải khớp với key đã dùng khi SIGN
       // Lấy từ .env để không hardcode trong code
+
+      passReqToCallback: true,
+      // passReqToCallback = true: Passport sẽ truyền request object
+      // vào method validate() như tham số đầu tiên
+      // → Cần để lấy raw token từ header cho Token Blacklist check
     });
   }
+
+  // Override validate để nhận request (do passReqToCallback = true)
+  // Passport gọi validate(request, payload) thay vì validate(payload)
 
   // Method này được gọi TỰ ĐỘNG bởi Passport SAU KHI:
   //   1. Rút token từ header ✅
@@ -248,12 +263,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   //
   // payload chứa dữ liệu ta đã đặt vào khi sign token (ở AuthService)
   // Ví dụ: { sub: 'user-uuid', email: 'john@example.com', iat: ..., exp: ... }
-  async validate(payload: { sub: string; email: string }) {
+  async validate(req: Request, payload: { sub: string; email: string }) {
+    this.request = req;
+    // passReqToCallback = true → Passport truyền request làm tham số đầu tiên
+    // Lưu lại request để lấy token từ header
+
+    // ═══ TOKEN BLACKLIST CHECK ═══
+    // Lấy raw token từ request header để kiểm tra blacklist
+    const token = req?.headers?.authorization?.replace('Bearer ', '');
+
+    if (token) {
+      // Kiểm tra token có nằm trong bảng InvalidatedToken không
+      const isInvalidated = await this.prisma.invalidatedToken.findUnique({
+        where: { token },
+      });
+      if (isInvalidated) {
+        throw new UnauthorizedException('Token đã bị thu hồi');
+        // Token nằm trong blacklist → reject ngay lập tức
+        // Xảy ra khi: user đã logout, bị ban, hoặc đã đổi password
+      }
+    }
+
     // Giá trị return từ validate() sẽ được GẮN VÀO request.user
     // → Controller có thể truy cập user qua @Req() hoặc @CurrentUser()
     return { id: payload.sub, email: payload.email };
-    // Trả về object gọn: chỉ giữ id và email
-    // Có thể query DB ở đây để lấy full user info, nhưng sẽ chậm hơn
   }
 }
 ```
@@ -572,15 +605,35 @@ export class AuthService {
   // ═══════════════════════════════════════════
   // LOGOUT — Đăng xuất
   // ═══════════════════════════════════════════
-  async logout(userId: string) {
-    // Revoke TẤT CẢ refresh tokens của user này
+  async logout(userId: string, accessToken: string) {
+    // Bước 1: Revoke TẤT CẢ refresh tokens của user này
     await this.prisma.refreshToken.updateMany({
       where: { userId: userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
     // updateMany — cập nhật nhiều records cùng lúc
     // revokedAt: null = chỉ revoke những token chưa bị revoke
-    // → Sau khi logout, mọi refresh token đều vô hiệu, user phải login lại
+
+    // Bước 2: ═══ TOKEN BLACKLIST ═══
+    // Thêm access token hiện tại vào bảng InvalidatedToken
+    // → Token bị vô hiệu hóa TỨC THÌ, mọi request tiếp theo bị reject 401
+    if (accessToken) {
+      try {
+        // Decode token để lấy thời gian hết hạn (exp)
+        const decoded = this.jwtService.decode(accessToken) as { exp: number };
+        await this.prisma.invalidatedToken.create({
+          data: {
+            token: accessToken,
+            expiresAt: new Date(decoded.exp * 1000),
+            // exp là Unix timestamp (giây) → nhân 1000 thành millisecond
+            // Lưu expiresAt để sau này cron job dọn dẹp records đã hết hạn
+            reason: 'LOGOUT',
+          },
+        });
+      } catch {
+        // Nếu decode lỗi (token sai format) → bỏ qua, không ảnh hưởng logout
+      }
+    }
 
     return { message: 'Đăng xuất thành công' };
   }
@@ -725,6 +778,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Headers,       // Thêm Headers decorator để lấy Authorization header
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -776,9 +830,15 @@ export class AuthController {
   // KHÔNG có @Public() → cần JWT token
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@CurrentUser('id') userId: string) {
-    // @CurrentUser('id') rút userId từ JWT payload (đã decode bởi JwtStrategy)
-    return this.authService.logout(userId);
+  logout(
+    @CurrentUser('id') userId: string,
+    @Headers('authorization') auth: string,
+    // @Headers('authorization') lấy nguyên header "Bearer xxx"
+    // Cần trích xuất token để thêm vào blacklist
+  ) {
+    const accessToken = auth?.replace('Bearer ', '');
+    // Bỏ prefix "Bearer " để lấy raw JWT token
+    return this.authService.logout(userId, accessToken);
   }
 
   // ── POST /api/v1/auth/forgot-password ──
@@ -885,7 +945,7 @@ export class AppModule {}
 ## Bước 9: Chạy Database Migration
 
 ### Tại sao?
-Schema Prisma đã có 16 entities nhưng DB thực tế chưa có tables. Migration tạo SQL và chạy trên DB.
+Schema Prisma đã có 17 entities (bao gồm InvalidatedToken mới) nhưng DB thực tế chưa có tables. Migration tạo SQL và chạy trên DB.
 
 ### Lệnh
 
@@ -923,7 +983,13 @@ Sau khi chạy xong, NestJS sẽ tự restart (watch mode).
 - `POST /api/v1/auth/logout`
 - Kỳ vọng: 200 + "Đăng xuất thành công"
 
-**Test 4: Register validation error**
+**Test 4: Token Blacklist — Verify token bị thu hồi**
+- Dùng lại accessToken cũ (từ bước 2, trước logout)
+- Gọi bất kỳ API cần auth → ví dụ `GET /api/v1/users/me`
+- Kỳ vọng: **401 Unauthorized** + "Token đã bị thu hồi"
+- → Chứng minh rằng access token đã bị blacklist tức thì sau logout
+
+**Test 5: Register validation error**
 - `POST /api/v1/auth/register`
 - Body: `{ "email": "invalid", "password": "123", "name": "" }`
 - Kỳ vọng: 400 + validation errors
@@ -934,16 +1000,16 @@ Sau khi chạy xong, NestJS sẽ tự restart (watch mode).
 
 - [ ] Thêm JWT config vào `.env`
 - [ ] Tạo 5 DTO files trong `src/auth/dto/`
-- [ ] Tạo `src/auth/strategies/jwt.strategy.ts`
+- [ ] Tạo `src/auth/strategies/jwt.strategy.ts` (có blacklist check)
 - [ ] Tạo `src/auth/guards/jwt-auth.guard.ts`
 - [ ] Tạo `src/auth/decorators/public.decorator.ts`
 - [ ] Tạo `src/auth/decorators/current-user.decorator.ts`
-- [ ] Viết lại `src/auth/auth.service.ts` (6 methods + helper)
-- [ ] Viết lại `src/auth/auth.controller.ts` (6 endpoints)
+- [ ] Viết lại `src/auth/auth.service.ts` (6 methods + helper + token blacklist)
+- [ ] Viết lại `src/auth/auth.controller.ts` (6 endpoints, logout truyền access token)
 - [ ] Cập nhật `src/auth/auth.module.ts` (JwtModule, PassportModule, JwtStrategy)
 - [ ] Cập nhật `src/app.module.ts` (APP_GUARD global)
 - [ ] Chạy `npx prisma migrate dev --name init`
-- [ ] Test trên Swagger UI: register → login → logout → validation error
+- [ ] Test: register → login → logout → verify blacklist → validation error
 
 ---
 

@@ -401,7 +401,105 @@ Lịch sử hoạt động trong workspace.
 
 ---
 
-## 15. SUMMARY
+## 15. ENTITY: INVITATION
+
+### 15.1. Mô tả
+Lời mời tham gia workspace, gửi qua email.
+
+### 15.2. Chi tiết
+
+| Column | Type | Required | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | VARCHAR(36) | ✅ | UUID gen | PK | Định danh duy nhất |
+| `workspace_id` | VARCHAR(36) | ✅ | - | FK → Workspace | Workspace mời vào |
+| `email` | VARCHAR(255) | ✅ | - | - | Email người được mời |
+| `role` | ENUM | ✅ | 'MEMBER' | - | Vai trò: OWNER, ADMIN, MEMBER |
+| `token` | VARCHAR(255) | ✅ | - | UNIQUE | Token xác nhận lời mời |
+| `invited_by_id` | VARCHAR(36) | ✅ | - | FK → User | Người gửi lời mời |
+| `expires_at` | TIMESTAMP | ✅ | - | - | Thời hạn lời mời |
+| `accepted_at` | TIMESTAMP | ❌ | NULL | - | Thời điểm chấp nhận |
+| `created_at` | TIMESTAMP | ✅ | now() | - | Thời điểm tạo |
+
+---
+
+## 16. ENTITY: REFRESH_TOKEN
+
+### 16.1. Mô tả
+Lưu trữ refresh token cho JWT authentication. Hỗ trợ Token Rotation — mỗi refresh token chỉ dùng 1 lần.
+
+### 16.2. Chi tiết
+
+| Column | Type | Required | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | VARCHAR(36) | ✅ | UUID gen | PK | Định danh duy nhất |
+| `token` | TEXT | ✅ | - | UNIQUE | JWT refresh token |
+| `user_id` | VARCHAR(36) | ✅ | - | FK → User | Chủ sở hữu token |
+| `expires_at` | TIMESTAMP | ✅ | - | - | Thời hạn token (7 ngày) |
+| `revoked_at` | TIMESTAMP | ❌ | NULL | - | Thời điểm thu hồi (logout/rotation) |
+| `created_at` | TIMESTAMP | ✅ | now() | - | Thời điểm tạo |
+
+### 16.3. Nghiệp vụ
+- Khi **refresh**: revoke token cũ, tạo token mới (Token Rotation)
+- Khi **logout**: revoke TẤT CẢ refresh tokens của user
+- Token đã `revoked_at != NULL` hoặc `expires_at < now()` → không hợp lệ
+
+---
+
+## 17. ENTITY: PASSWORD_RESET
+
+### 17.1. Mô tả
+Token đặt lại mật khẩu, gửi qua email khi user quên mật khẩu.
+
+### 17.2. Chi tiết
+
+| Column | Type | Required | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | VARCHAR(36) | ✅ | UUID gen | PK | Định danh duy nhất |
+| `user_id` | VARCHAR(36) | ✅ | - | FK → User | User yêu cầu reset |
+| `token` | VARCHAR(255) | ✅ | - | UNIQUE | Token ngẫu nhiên (hex 64 ký tự) |
+| `expires_at` | TIMESTAMP | ✅ | - | - | Thời hạn token (1 giờ) |
+| `used_at` | TIMESTAMP | ❌ | NULL | - | Thời điểm đã sử dụng |
+| `created_at` | TIMESTAMP | ✅ | now() | - | Thời điểm tạo |
+
+### 17.3. Nghiệp vụ
+- Mỗi token chỉ dùng 1 lần (`used_at != NULL` → reject)
+- Token hết hạn sau 1 giờ (`expires_at < now()` → reject)
+
+---
+
+## 18. ENTITY: INVALIDATED_TOKEN
+
+### 18.1. Mô tả
+Bảng lưu access tokens đã bị vô hiệu hóa (Token Blacklist). Khi user logout hoặc bị ban, access token hiện tại được thêm vào bảng này để tức thì thu hồi quyền truy cập.
+
+### 18.2. Chi tiết
+
+| Column | Type | Required | Default | Constraints | Description |
+|--------|------|----------|---------|-------------|-------------|
+| `id` | VARCHAR(36) | ✅ | UUID gen | PK | Định danh duy nhất |
+| `token` | TEXT | ✅ | - | UNIQUE | JWT access token bị vô hiệu |
+| `expires_at` | TIMESTAMP | ✅ | - | - | Thời điểm token hết hạn (dùng để dọn dẹp) |
+| `reason` | VARCHAR(50) | ❌ | NULL | - | Lý do: LOGOUT, BANNED, PASSWORD_CHANGED |
+| `created_at` | TIMESTAMP | ✅ | now() | - | Thời điểm vô hiệu hóa |
+
+### 18.3. Nghiệp vụ
+- **Logout**: Lưu access token hiện tại vào bảng → tức thì mất quyền truy cập
+- **Ban user**: Admin ban → lưu access token → user bị kick ngay lập tức
+- **Đổi password**: Lưu access token cũ → buộc đăng nhập lại
+- **Dọn dẹp**: Cron job xóa records có `expires_at < now()` (token đã tự hết hạn, không cần giữ)
+- **JwtStrategy**: Mỗi request kiểm tra token có trong bảng không → nếu có thì reject 401
+
+### 18.4. Indexes
+
+| Index Name | Columns | Type | Purpose |
+|------------|---------|------|---------|
+| `invalidated_token_pkey` | id | PRIMARY | Khóa chính |
+| `invalidated_token_token_key` | token | UNIQUE | Tìm kiếm nhanh khi verify |
+| `invalidated_token_expires_idx` | expires_at | INDEX | Dọn dẹp records hết hạn |
+
+---
+
+## 19. SUMMARY
 
 | # | Entity | Columns | Type |
 |---|--------|---------|------|
@@ -419,3 +517,8 @@ Lịch sử hoạt động trong workspace.
 | 12 | Attachment | 8 | Master |
 | 13 | Notification | 10 | Master |
 | 14 | ActivityLog | 10 | Master |
+| 15 | Invitation | 9 | Master |
+| 16 | RefreshToken | 6 | Auth Support |
+| 17 | PasswordReset | 6 | Auth Support |
+| 18 | InvalidatedToken | 5 | Auth Support (Token Blacklist) |
+

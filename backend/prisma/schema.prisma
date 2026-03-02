@@ -394,3 +394,15 @@ model PasswordReset {
   @@index([userId])
   @@map("password_resets")
 }
+
+// 17. InvalidatedToken - Token Blacklist (thu hồi access token tức thì)
+model InvalidatedToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  reason    String?  // LOGOUT, BANNED, PASSWORD_CHANGED
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("invalidated_tokens")
+}

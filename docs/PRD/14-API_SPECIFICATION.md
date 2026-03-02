@@ -171,6 +171,11 @@ POST /auth/logout
 Authorization: Bearer <token>
 ```
 
+**Hành vi:**
+1. Thu hồi tất cả refresh tokens của user (revoke)
+2. Thêm access token hiện tại vào bảng `InvalidatedToken` (Token Blacklist)
+3. Access token bị vô hiệu hóa **tức thì** — mọi request tiếp theo bị reject 401
+
 **Response 200:**
 ```json
 {
