@@ -4,6 +4,80 @@
 
 ---
 
+## Kiến thức nền tảng TypeScript
+
+Trước khi đi vào các kỹ thuật nâng cao, chương này cần làm rõ một số khái niệm TypeScript/JavaScript cốt lõi được sử dụng xuyên suốt toàn bộ mã nguồn nhưng chưa được giải thích trong các chương trước.
+
+### Khai báo biến: `const` và `let`
+
+TypeScript cung cấp hai từ khóa để khai báo biến: `const` (hằng số — gán một lần, không thay đổi được) và `let` (biến — có thể gán lại). Quy ước trong TypeScript hiện đại là **ưu tiên dùng `const` cho mọi thứ**, chỉ chuyển sang `let` khi thực sự cần thay đổi giá trị (ví dụ: biến đếm trong vòng lặp). Từ khóa `var` (cách khai báo cũ của JavaScript) không nên sử dụng vì phạm vi hoạt động (scope) của nó dễ gây ra lỗi khó phát hiện.
+
+```typescript
+const email = 'john@example.com';  // Hằng số — không thể gán lại
+email = 'jane@example.com';        // ❌ LỖI: Assignment to constant variable
+
+let count = 0;                     // Biến — có thể gán lại
+count = count + 1;                 // ✅ OK
+```
+
+### Lập trình bất đồng bộ: `async` và `await`
+
+JavaScript là ngôn ngữ **đơn luồng (single-threaded)** — tại một thời điểm chỉ chạy được một tác vụ. Các thao tác như truy vấn cơ sở dữ liệu, đọc file, hoặc gọi API bên ngoài đều **mất thời gian** (từ vài mili-giây đến vài giây). Nếu chương trình đứng đợi đồng bộ (synchronous), toàn bộ server sẽ **đóng băng** và không thể phục vụ bất kỳ request nào khác trong khoảng thời gian đó.
+
+Để giải quyết vấn đề này, JavaScript sử dụng cơ chế **bất đồng bộ (asynchronous)** thông qua cặp từ khóa `async`/`await`:
+
+- **`async`** đánh dấu một hàm là bất đồng bộ, cho phép sử dụng `await` bên trong.
+- **`await`** yêu cầu chương trình **tạm dừng hàm hiện tại** và đợi kết quả trả về, nhưng trong lúc đợi, server **vẫn tiếp tục xử lý các request khác** — đây là sự khác biệt cốt lõi so với việc đợi đồng bộ.
+
+```typescript
+// Hàm bất đồng bộ — server vẫn hoạt động bình thường trong lúc đợi DB
+async function findUser(email: string) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  // "await" = tạm dừng hàm này, đợi DB trả kết quả
+  // Trong lúc đợi, server VẪN phục vụ các request khác bình thường
+  return user;
+}
+```
+
+Nếu thiếu `await`, biến sẽ nhận về một đối tượng `Promise` (lời hứa trả kết quả trong tương lai) thay vì dữ liệu thật:
+
+```typescript
+const user = prisma.user.findUnique({ where: { email } });
+console.log(user);  // Promise { <pending> } — chưa có dữ liệu, vô dụng
+
+const user = await prisma.user.findUnique({ where: { email } });
+console.log(user);  // { id: '...', email: '...', name: '...' } — dữ liệu thật
+```
+
+**Quy tắc thực hành:** Bất kỳ method nào có gọi đến cơ sở dữ liệu (Prisma), hash mật khẩu (bcrypt), hoặc ký token (JWT) đều phải khai báo `async` và sử dụng `await` khi gọi các hàm đó.
+
+### Cú pháp truy vấn Prisma
+
+Prisma ORM cung cấp một API trực quan để tương tác với cơ sở dữ liệu. Cú pháp cơ bản tuân theo đường dẫn: `prisma.<tên_bảng>.<thao_tác>()`.
+
+```
+this.prisma              → PrismaService (kết nối đến cơ sở dữ liệu)
+    .user                → bảng "users" (tên model trong schema.prisma)
+    .findUnique          → thao tác tìm kiếm một bản ghi duy nhất
+    ({ where: { id } })  → điều kiện tìm kiếm
+```
+
+Bảng tra cứu các thao tác thường dùng:
+
+| Prisma method | SQL tương đương | Mô tả |
+|:---|:---|:---|
+| `.create({ data })` | INSERT INTO | Tạo mới một bản ghi |
+| `.findUnique({ where })` | SELECT ... WHERE (1 bản ghi) | Tìm theo trường unique (id, email) |
+| `.findMany({ where })` | SELECT ... WHERE (nhiều bản ghi) | Tìm danh sách theo điều kiện |
+| `.update({ where, data })` | UPDATE ... SET ... WHERE | Cập nhật một bản ghi |
+| `.updateMany({ where, data })` | UPDATE nhiều bản ghi | Cập nhật hàng loạt |
+| `.delete({ where })` | DELETE ... WHERE | Xóa một bản ghi |
+| `.$transaction([...])` | BEGIN; ...; COMMIT; | Thực thi nhiều truy vấn trong một giao dịch |
+
+Việc nắm vững ba khái niệm nền tảng trên (`const`/`let` để quản lý biến, `async`/`await` để xử lý bất đồng bộ, và cú pháp Prisma để tương tác cơ sở dữ liệu) sẽ giúp người đọc hiểu trọn vẹn các đoạn mã trong chương này cũng như toàn bộ mã nguồn backend của dự án.
+
+---
+
 ## 6.1. Request Lifecycle trong NestJS
 
 Trước khi đi vào từng kỹ thuật cụ thể, cần hiểu rõ vòng đời của một HTTP request khi đi qua ứng dụng NestJS. Mỗi request sẽ phải "bước qua" một chuỗi các trạm kiểm soát theo thứ tự cố định, và mỗi kỹ thuật trong chương này sẽ can thiệp vào một giai đoạn cụ thể.

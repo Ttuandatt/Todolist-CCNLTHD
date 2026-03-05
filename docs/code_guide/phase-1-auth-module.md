@@ -225,8 +225,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   // JwtStrategy kế thừa class đó → tự động đăng ký vào Passport
   // Tên strategy mặc định là 'jwt' (sẽ dùng với AuthGuard('jwt'))
 
-  private request: Request;
-  // Lưu reference đến request để dùng trong validate()
 
   constructor(private prisma: PrismaService) {
     super({
@@ -241,7 +239,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // false = NẾU token hết hạn → tự động reject, throw UnauthorizedException
       // true = bỏ qua hết hạn (KHÔNG NÊN dùng trong production)
 
-      secretOrKey: process.env.JWT_SECRET,
+      secretOrKey: process.env.JWT_SECRET as string,
       // Secret key dùng để VERIFY token — phải khớp với key đã dùng khi SIGN
       // Lấy từ .env để không hardcode trong code
 
@@ -264,7 +262,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   // payload chứa dữ liệu ta đã đặt vào khi sign token (ở AuthService)
   // Ví dụ: { sub: 'user-uuid', email: 'john@example.com', iat: ..., exp: ... }
   async validate(req: Request, payload: { sub: string; email: string }) {
-    this.request = req;
     // passReqToCallback = true → Passport truyền request làm tham số đầu tiên
     // Lưu lại request để lấy token từ header
 
@@ -582,7 +579,7 @@ export class AuthService {
     // Bước 2: Verify JWT signature của refresh token
     try {
       await this.jwtService.verifyAsync(dto.refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
+        secret: process.env.JWT_REFRESH_SECRET as string
       });
     } catch {
       throw new UnauthorizedException('Refresh token không hợp lệ');
@@ -1014,3 +1011,177 @@ Sau khi chạy xong, NestJS sẽ tự restart (watch mode).
 ---
 
 > **Khi hoàn thành Phase 1, báo tôi để tiếp tục sang Phase 2 (User Module).** Phase 2 sẽ nhẹ hơn — chỉ 4 endpoints: get profile, update profile, change password, upload avatar.
+
+---
+
+## Q&A — Giải đáp thắc mắc
+
+### Q1: JWT_SECRET và JWT_REFRESH_SECRET có thay đổi không?
+
+**Không** — chúng là khóa bí mật **cố định** của server, giữ nguyên xuyên suốt vòng đời ứng dụng.
+
+- Nếu đổi secret → **tất cả token đã phát hành tức thì mất hiệu lực** (chữ ký không khớp)
+- Chỉ đổi khi **bị leak** (lộ secret ra ngoài)
+
+```
+Access Token  = sign(payload, JWT_SECRET,         expiresIn: 15m)
+Refresh Token = sign(payload, JWT_REFRESH_SECRET,  expiresIn: 7d)
+```
+
+Cả 2 token tạo từ **cùng payload**, chỉ khác **secret** và **thời hạn**.
+
+---
+
+### Q2: Nếu không tạo DTOs thì sao?
+
+Vẫn chạy được, nhưng:
+
+| Có DTO | Không DTO |
+|:---|:---|
+| `@IsEmail()` → tự reject email sai format | Phải tự viết `if (!email.includes('@'))` |
+| `@MinLength(8)` → tự reject password ngắn | Quên check → password "1" lọt vào DB |
+| `whitelist: true` → field lạ bị xóa | Client gửi `{ role: "ADMIN" }` → lọt vào DB → **lỗi bảo mật** |
+
+→ DTO = **lá chắn tự động**, không có thì phải check thủ công từng field, dễ thiếu sót.
+
+---
+
+### Q3: Tại sao dùng Passport? JWT Strategy để làm gì?
+
+**Tại sao Passport?**
+- Thư viện auth **phổ biến nhất** Node.js (50k+ stars)
+- NestJS tích hợp sẵn `@nestjs/passport`
+- Hỗ trợ nhiều strategy: JWT, Google OAuth, GitHub OAuth...
+- Tự viết guard verify JWT cũng được, nhưng Passport **tiết kiệm 80% code**
+
+**JWT Strategy làm gì?**
+```
+Request đến → JwtStrategy tự động:
+  1. Rút token từ header "Authorization: Bearer xxx"
+  2. Verify chữ ký bằng JWT_SECRET
+  3. Check hết hạn
+  → OK → gọi validate() → trả user → gắn vào request.user
+  → FAIL → throw 401 tự động
+```
+
+→ Mục đích: biến chuỗi JWT thành **user object** trên request, để controller biết **"ai đang gọi API này"**.
+
+---
+
+### Q4: JwtAuthGuard để làm gì?
+
+Guard = **bảo vệ** — đứng trước controller, quyết định request có được vào hay không.
+
+- Route có `@Public()` → **cho qua**, không cần JWT
+- Route không có `@Public()` → **bắt buộc JWT hợp lệ**, nếu không → 401
+
+Không có guard → mọi route đều open, ai cũng truy cập được.
+
+---
+
+### Q5: @Public() và @CurrentUser() để làm gì?
+
+**`@Public()`** — đánh dấu route KHÔNG cần auth:
+```typescript
+@Public()           // ← Ai cũng vào được
+@Post('register')
+register() { ... }
+
+@Post('logout')     // ← Không có @Public() → phải có JWT
+logout() { ... }
+```
+
+**`@CurrentUser()`** — lấy thông tin user từ JWT đã decode:
+```typescript
+// KHÔNG có @CurrentUser() → dài:
+@Post('logout')
+logout(@Req() req) {
+  const userId = req.user.id;
+}
+
+// CÓ @CurrentUser() → gọn:
+@Post('logout')
+logout(@CurrentUser('id') userId: string) { }
+```
+
+→ Decorator = **phím tắt**, giúp code gọn và dễ đọc. Không có cũng được, nhưng code sẽ dài và lặp lại.
+
+---
+
+### Q6: `async` là gì? Tại sao method nào cũng có?
+
+`async` đánh dấu hàm là **bất đồng bộ** (asynchronous). Hàm có `async` cho phép dùng `await` bên trong.
+
+**Tại sao cần?** Vì thao tác với DB, file, API **mất thời gian** (vài ms đến vài giây). JavaScript là single-threaded — nếu đứng đợi thì cả server **đóng băng**, không phục vụ request nào khác.
+
+```typescript
+// KHÔNG có async/await — server đóng băng khi query DB
+function register() {
+  // JavaScript sẽ chờ DB xong mới chạy tiếp
+  // Trong thời gian đó, KHÔNG phục vụ được request nào khác
+}
+
+// CÓ async/await — server vẫn phục vụ request khác trong lúc đợi DB
+async function register() {
+  const user = await prisma.user.create({...});
+  // "await" = đợi DB xong, NHƯNG trong lúc đợi, server VẪN xử lý request khác
+  // → Hiệu năng cao hơn rất nhiều
+}
+```
+
+→ **Quy tắc**: Hễ method có gọi DB (Prisma), hash password (bcrypt), sign token (JWT) → phải thêm `async` và `await`.
+
+---
+
+### Q7: `const` vs `let` — khai báo biến
+
+```typescript
+// const = hằng số — gán 1 lần, KHÔNG gán lại được
+const email = 'john@example.com';
+email = 'jane@example.com';  // ❌ LỖI: Assignment to constant variable
+
+// let = biến — có thể gán lại
+let count = 0;
+count = count + 1;            // ✅ OK: let cho phép gán lại
+```
+
+**Quy ước trong TypeScript:**
+- Dùng `const` cho **mọi thứ** — mặc định
+- Chỉ dùng `let` khi **cần thay đổi giá trị** (vòng lặp, đếm...)
+- **KHÔNG BAO GIỜ** dùng `var` (cách cũ, dễ gây bug)
+
+**`await` = "đợi cho xong":**
+```typescript
+// KHÔNG có await → user = Promise (object chưa có kết quả, vô dụng)
+const user = this.prisma.user.findUnique({...});
+console.log(user); // Promise { <pending> } ← CÒN ĐANG TẢI
+
+// CÓ await → user = kết quả thật (User object hoặc null)
+const user = await this.prisma.user.findUnique({...});
+console.log(user); // { id: '...', email: '...', name: '...' } ← DỮ LIỆU THẬT
+```
+
+---
+
+### Q8: `this.prisma.invalidatedToken.create(...)` nghĩa là gì?
+
+Đúng — đó là cú pháp truy cập DB qua Prisma. Phân tích:
+
+```
+this.prisma              → PrismaService (kết nối đến database)
+    .invalidatedToken    → bảng "invalidated_tokens" (@@map trong schema)
+    .create              → thao tác INSERT 1 record mới
+    ({ data: {...} })    → dữ liệu cần insert
+```
+
+**Bảng tra cứu thao tác Prisma thường dùng:**
+
+| Prisma method | SQL tương đương | Ví dụ |
+|:---|:---|:---|
+| `.create()` | INSERT INTO | `prisma.user.create({ data: { email, name } })` |
+| `.findUnique()` | SELECT ... WHERE (1 record) | `prisma.user.findUnique({ where: { id } })` |
+| `.findMany()` | SELECT ... WHERE (nhiều records) | `prisma.task.findMany({ where: { status: 'TODO' } })` |
+| `.update()` | UPDATE ... WHERE | `prisma.user.update({ where: { id }, data: { name } })` |
+| `.updateMany()` | UPDATE nhiều records | `prisma.refreshToken.updateMany({ where: {...}, data: {...} })` |
+| `.delete()` | DELETE ... WHERE | `prisma.user.delete({ where: { id } })` |
+| `.$transaction()` | BEGIN; ...queries...; COMMIT; | Chạy nhiều queries atomically |
