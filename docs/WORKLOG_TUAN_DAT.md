@@ -124,3 +124,30 @@
 **Công việc tuần tới:**
 - Code Phase 1 (Auth Module hoàn chỉnh: JWT, bcrypt, refresh token)
 - Hoàn thiện nội dung Chương 2, 8, 9, 10-11 cho báo cáo
+
+---
+
+## Tuần 8: 02/03 - 08/03
+
+**Kết quả thực hiện trong tuần:**
+- Thiết kế cơ chế **Token Blacklist (InvalidatedToken)**: khi user logout hoặc bị ban, access token bị vô hiệu hóa tức thì qua bảng DB
+- Cập nhật tất cả tài liệu PRD cho Token Blacklist:
+  - `07-DATA_DICTIONARY.md`: thêm 4 entities mới (Invitation, RefreshToken, PasswordReset, InvalidatedToken), tổng 14 → 18
+  - `14-API_SPECIFICATION.md`: bổ sung hành vi logout (revoke refresh + blacklist access token)
+  - `prisma/schema.prisma`: thêm model `InvalidatedToken` (entity 17)
+  - `phase-1-auth-module.md`: cập nhật JwtStrategy (blacklist check), AuthService.logout (blacklist), AuthController (Headers decorator), thêm Test 4 verify blacklist
+- Chạy `npx prisma generate` cập nhật Prisma Client cho model mới
+- Code Phase 1 Auth Module — hoàn thành Bước 1 đến Bước 6:
+  - Bước 1: Thêm JWT secrets vào `.env`
+  - Bước 2: Tạo 5 DTO files (`register`, `login`, `refresh-token`, `forgot-password`, `reset-password`)
+  - Bước 3: Tạo `JwtStrategy` với Token Blacklist check (passReqToCallback + check InvalidatedToken)
+  - Bước 4: Tạo `JwtAuthGuard` (kiểm tra @Public() metadata qua Reflector)
+  - Bước 5: Tạo decorators `@Public()` và `@CurrentUser()`
+  - Bước 6: Viết `AuthService` hoàn chỉnh (register, login, refreshToken, logout + blacklist, forgotPassword, resetPassword, generateTokens)
+- Bổ sung kiến thức nền tảng vào tài liệu:
+  - Chapter 6 (`06-advanced-chapter.md`): thêm section "Kiến thức nền tảng TypeScript" (const/let, async/await, Prisma query syntax)
+  - Code guide Phase 1: thêm Q&A Q1-Q8 (JWT secrets, DTO, Passport, Guard, Decorators, async, const, Prisma)
+
+**Công việc tuần tới:**
+- Hoàn thành Phase 1: Code Bước 7 (AuthController), Bước 8 (Module), Bước 9 (Migration), Bước 10 (Test)
+- Hoàn thiện nội dung Chương 2, 8, 9, 10-11 cho báo cáo
