@@ -73,6 +73,52 @@ export class AuthService {
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════
+    // LOGIN — Đăng nhập
+    // ══════════════════════════════════════════════════════════════════════════════════════
+    async login(dto: LoginDto) {
+        // Bước 1: Tìm user theo email
+        const user = await this.prisma.user.findUnique({
+            where: { email: dto.email }
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('Email or password is not correct')
+            // Không nói rõ "email không tồn tại" → tránh lộ thông tin user nào đã đăng ký
+            // Đây là best practice bảo mật
+        }
+
+        // Bước 2: So sánh password
+        const passwordMatch = await bcrypt.compare(dto.password, user.password);
+        // bcrypt.compare:
+        //   1. Rút salt từ trong hash
+        //   2. Hash password nhập vào với cùng salt
+        //   3. So sánh 2 hash → true nếu khớp
+        if (!passwordMatch) {
+            throw new UnauthorizedException('Email or password is not correct');
+        }
+
+        // Bước 3: Cập nhật lastLoginAt
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() }
+        });
+
+        // Bước 4: Tạo tokens + trả về
+        const tokens = await this.generateTokens(user.id, user.email);
+
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar,
+                status: user.status,
+            },
+            tokens
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════
     // REFRESH TOKEN — Lấy access token mới
     // ══════════════════════════════════════════════════════════════════════════════════════
     async refreshToken(dto: RefreshTokenDto) {
@@ -195,7 +241,7 @@ export class AuthService {
 
 
         // Bước 2: Hash password mới
-        const hashedPassword = await bcrypt.hash(dto.password, 10);
+        const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
 
 
         // Bước 3: Cập nhật password + đánh dấu token đã dùng (dùng transaction)
@@ -229,12 +275,12 @@ export class AuthService {
             // Access Token: sống ngắn (15m), dùng secret chính
             this.jwtService.signAsync(payload, {
                 secret: process.env.JWT_SECRET,
-                expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+                expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
             }),
             // Refresh Token: sống dài (7d), dùng secret riêng
             this.jwtService.signAsync(payload, {
                 secret: process.env.JWT_REFRESH_SECRET,
-                expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+                expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '15m') as any,
             }),
         ]);
 
@@ -243,7 +289,7 @@ export class AuthService {
             data: {
                 token: refreshToken,
                 userId: userId,
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
             },
         });
 

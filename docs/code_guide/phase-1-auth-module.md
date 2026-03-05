@@ -88,27 +88,31 @@ DTO định nghĩa "dữ liệu nào được phép gửi lên" và "validate ra
 import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
 
 export class RegisterDto {
-  @IsEmail({}, { message: 'Email không hợp lệ' })
+  @IsEmail({}, { message: 'Invalid email address' })
+  @IsNotEmpty({ message: 'Email should not be empty' })
   // @IsEmail() kiểm tra chuỗi có đúng format email không
-  // {} = options mặc định, { message: '...' } = lỗi tùy chỉnh thay vì message tiếng Anh
+  // {} = options mặc định, { message: '...' } = lỗi tùy chỉnh
   email: string;
 
   @IsString()
-  @MinLength(8, { message: 'Mật khẩu phải có ít nhất 8 ký tự' })
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @IsNotEmpty({ message: 'Password should not be empty' })
   // @MinLength(8) → reject nếu password ngắn hơn 8 ký tự
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
-    message: 'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số',
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+    message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
   })
   // @Matches(regex) → validate bằng regex:
-  //   (?=.*[a-z]) = phải có ít nhất 1 chữ thường
-  //   (?=.*[A-Z]) = phải có ít nhất 1 chữ HOA
-  //   (?=.*\d)    = phải có ít nhất 1 chữ SỐ
+  //   (?=.*[a-z])       = phải có ít nhất 1 chữ thường
+  //   (?=.*[A-Z])       = phải có ít nhất 1 chữ HOA
+  //   (?=.*\d)          = phải có ít nhất 1 chữ SỐ
+  //   (?=.*[@$!%*?&])   = phải có ít nhất 1 ký tự đặc biệt
   password: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'Tên không được để trống' })
+  @IsNotEmpty({ message: 'Fullname should not be empty' })
   // @IsNotEmpty() → reject chuỗi rỗng "" (khác với @IsString() chỉ check kiểu)
-  name: string;
+  fullname: string;
+  // Tên field là fullname (không phải name) → map sang user.name trong service
 }
 ```
 
@@ -494,7 +498,7 @@ export class AuthService {
       data: {
         email: dto.email,
         password: hashedPassword,  // Lưu hash, KHÔNG BAO GIỜ lưu password gốc
-        name: dto.name,
+        name: dto.fullname,  // DTO dùng field fullname → map sang name trong DB
       },
     });
 
@@ -503,7 +507,7 @@ export class AuthService {
 
     // Bước 5: Trả về tokens + thông tin user (KHÔNG trả password)
     return {
-      ...tokens,
+      tokens,
       user: {
         id: user.id,
         email: user.email,
@@ -551,7 +555,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email);
 
     return {
-      ...tokens,
+      tokens,
       user: {
         id: user.id,
         email: user.email,
@@ -632,7 +636,7 @@ export class AuthService {
       }
     }
 
-    return { message: 'Đăng xuất thành công' };
+    return { message: 'Logout successfully' };
   }
 
   // ═══════════════════════════════════════════
@@ -643,10 +647,9 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    // Luôn trả success message — KHÔNG tiết lộ email có tồn tại hay không
-    // → Bảo mật: attacker không enumerate được email nào đã đăng ký
+    // Nếu không tìm thấy → throw error
     if (!user) {
-      return { message: 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu' };
+      throw new NotFoundException('User not found');
     }
 
     // Tạo token ngẫu nhiên bằng crypto
@@ -654,22 +657,22 @@ export class AuthService {
     // randomBytes(32) → 32 bytes ngẫu nhiên → toString('hex') → 64 ký tự hex
     // An toàn hơn UUID vì hoàn toàn ngẫu nhiên, không đoán được
 
-    // Lưu token vào DB với thời hạn 1 giờ
+    // Lưu token vào DB với thời hạn 15 phút
     await this.prisma.passwordReset.create({
       data: {
         userId: user.id,
         token: resetToken,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 giờ
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
         // Date.now() trả millisecond hiện tại
-        // + 60 * 60 * 1000 = + 3,600,000 ms = + 1 giờ
+        // + 15 * 60 * 1000 = + 900,000 ms = + 15 phút
       },
     });
 
     // TODO: Gửi email chứa link reset (sẽ implement khi có email service)
     // Link có dạng: https://app.com/reset-password?token=<resetToken>
-    console.log(`[DEV] Reset token cho ${dto.email}: ${resetToken}`);
+    console.log(`[DEV] Reset token for ${dto.email}: ${resetToken}`);
 
-    return { message: 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu' };
+    return { message: 'Reset password email sent' };
   }
 
   // ═══════════════════════════════════════════
@@ -706,7 +709,7 @@ export class AuthService {
       }),
     ]);
 
-    return { message: 'Đặt lại mật khẩu thành công' };
+    return { message: 'Password reset successfully' };
   }
 
   // ═══════════════════════════════════════════
@@ -723,12 +726,14 @@ export class AuthService {
       // Access Token: sống ngắn (15m), dùng secret chính
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_SECRET,
-        expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+        expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
+        // as any — ép kiểu vì @nestjs/jwt v11+ đổi kiểu expiresIn
+        // từ string thành StringValue (branded type từ thư viện ms)
       }),
-      // Refresh Token: sống dài (7d), dùng secret riêng
+      // Refresh Token: sống dài, dùng secret riêng
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+        expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '15m') as any,
       }),
     ]);
 
@@ -737,7 +742,7 @@ export class AuthService {
       data: {
         token: refreshToken,
         userId: userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
       },
     });
 
@@ -910,6 +915,10 @@ export class AuthModule {}
 
 ```typescript
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+// ConfigModule — load biến môi trường từ .env vào process.env
+// Không có ConfigModule → process.env.JWT_SECRET = undefined → JwtStrategy crash
+
 import { APP_GUARD } from '@nestjs/core';
 // APP_GUARD — special token để đăng ký Guard GLOBAL qua module system
 // Khác với app.useGlobalGuards(): dùng APP_GUARD cho phép Guard dùng DI (inject Reflector)
@@ -919,7 +928,13 @@ import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    // isGlobal: true → không cần import ConfigModule ở từng module con
+    // .forRoot() = load file .env tại root project
+    AuthModule,
+    PrismaModule,
+  ],
   providers: [
     {
       provide: APP_GUARD,
@@ -944,8 +959,21 @@ export class AppModule {}
 ### Tại sao?
 Schema Prisma đã có 17 entities (bao gồm InvalidatedToken mới) nhưng DB thực tế chưa có tables. Migration tạo SQL và chạy trên DB.
 
-### Lệnh
+### Chuẩn bị
 
+**1. Cài `@nestjs/config`** (nếu chưa cài):
+```bash
+npm install @nestjs/config
+```
+> `@nestjs/config` cung cấp `ConfigModule` để load `.env` vào `process.env`.
+> Không có → `process.env.JWT_SECRET` = undefined → server crash.
+
+**2. Đảm bảo Docker PostgreSQL đang chạy:**
+```bash
+docker compose up -d
+```
+
+**3. Chạy migration:**
 ```bash
 npx prisma migrate dev --name init
 ```
@@ -966,29 +994,30 @@ Sau khi chạy xong, NestJS sẽ tự restart (watch mode).
 
 **Test 1: Register**
 - `POST /api/v1/auth/register`
-- Body: `{ "email": "test@example.com", "password": "Password123", "name": "Test User" }`
+- Body: `{ "email": "test@example.com", "password": "Password@123", "fullname": "Test User" }`
 - Kỳ vọng: 201 + accessToken + refreshToken + user info
+- Lưu ý: password phải có chữ hoa, chữ thường, số, VÀ ký tự đặc biệt (@$!%*?&)
 
 **Test 2: Login**
 - `POST /api/v1/auth/login`
-- Body: `{ "email": "test@example.com", "password": "Password123" }`
+- Body: `{ "email": "test@example.com", "password": "Password@123" }`
 - Kỳ vọng: 200 + tokens
 
 **Test 3: Logout (cần auth)**
 - Copy accessToken từ bước 2
 - Bấm nút 🔒 Authorize trên Swagger → paste token
 - `POST /api/v1/auth/logout`
-- Kỳ vọng: 200 + "Đăng xuất thành công"
+- Kỳ vọng: 200 + "Logout successfully"
 
 **Test 4: Token Blacklist — Verify token bị thu hồi**
 - Dùng lại accessToken cũ (từ bước 2, trước logout)
-- Gọi bất kỳ API cần auth → ví dụ `GET /api/v1/users/me`
-- Kỳ vọng: **401 Unauthorized** + "Token đã bị thu hồi"
+- Gọi bất kỳ API cần auth → ví dụ `POST /api/v1/auth/logout` lần nữa
+- Kỳ vọng: **401 Unauthorized** + "Token is invalidated"
 - → Chứng minh rằng access token đã bị blacklist tức thì sau logout
 
 **Test 5: Register validation error**
 - `POST /api/v1/auth/register`
-- Body: `{ "email": "invalid", "password": "123", "name": "" }`
+- Body: `{ "email": "invalid", "password": "123", "fullname": "" }`
 - Kỳ vọng: 400 + validation errors
 
 ---

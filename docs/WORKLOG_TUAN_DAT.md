@@ -147,7 +147,18 @@
 - Bổ sung kiến thức nền tảng vào tài liệu:
   - Chapter 6 (`06-advanced-chapter.md`): thêm section "Kiến thức nền tảng TypeScript" (const/let, async/await, Prisma query syntax)
   - Code guide Phase 1: thêm Q&A Q1-Q8 (JWT secrets, DTO, Passport, Guard, Decorators, async, const, Prisma)
+- Code Phase 1 Auth Module — hoàn thành Bước 7 đến Bước 9:
+  - Bước 7: Viết `AuthController` (6 endpoints: register, login, refresh, logout, forgot-password, reset-password)
+  - Bước 8a: Cập nhật `AuthModule` (imports PassportModule + JwtModule, providers + exports)
+  - Bước 8b: Cập nhật `AppModule` (APP_GUARD global JwtAuthGuard)
+  - Bước 9: Chạy `npx prisma migrate dev --name init` — tạo 17 tables thành công
+- Fix lỗi `JwtStrategy requires a secret or key`: cài `@nestjs/config`, thêm `ConfigModule.forRoot({ isGlobal: true })` vào AppModule
+- Fix lỗi TypeScript `expiresIn` type mismatch: thêm `as any` cast cho `@nestjs/jwt` v11+
+- Sync guide (`phase-1-auth-module.md`) với code thực tế: 9 điểm lệch (RegisterDto fullname, messages tiếng Anh, regex đặc biệt, ConfigModule, token expiry 15m...)
+- Tạo Hoppscotch API collection (`backend/docs/hoppscotch-collection.json`): OpenAPI 3.0 spec, phân nhóm Auth/User/Workspace/Task
+- Server khởi động thành công: 6 routes mapped, database connected
 
 **Công việc tuần tới:**
-- Hoàn thành Phase 1: Code Bước 7 (AuthController), Bước 8 (Module), Bước 9 (Migration), Bước 10 (Test)
+- Hoàn thành Phase 1: Bước 10 (Test toàn bộ trên Hoppscotch/Swagger)
+- Code Phase 2: User Module (get profile, update profile, change password, upload avatar)
 - Hoàn thiện nội dung Chương 2, 8, 9, 10-11 cho báo cáo

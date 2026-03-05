@@ -8,3 +8,8 @@ export const IS_PUBLIC_KEY = 'isPublic';
 // Hàm Public() trả về một decorator
 // SetMetadata(key, value) gắn metadata 'isPublic' = true vào route handler
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+// Cách dùng:
+// @Public()                    ← gắn decorator
+// @Post('register')
+// register(@Body() dto) {...}  ← route này KHÔNG cần JWT

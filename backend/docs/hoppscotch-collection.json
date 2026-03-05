@@ -1,0 +1,524 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "TodoList Collaboration API",
+        "description": "API collection cho dự án TodoList Collaboration — CCNLTHD",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Tuan Dat"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:3333/api/v1",
+            "description": "Local Development"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentication — Đăng ký, đăng nhập, đăng xuất, quản lý token"
+        },
+        {
+            "name": "User",
+            "description": "User Profile — Xem/sửa thông tin cá nhân (Phase 2 — chưa implement)"
+        },
+        {
+            "name": "Workspace",
+            "description": "Workspace Management — Quản lý không gian làm việc (Phase 3 — chưa implement)"
+        },
+        {
+            "name": "Task",
+            "description": "Task Management — Quản lý công việc (Phase 4 — chưa implement)"
+        }
+    ],
+    "paths": {
+        "/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng ký tài khoản mới",
+                "description": "Tạo tài khoản mới với email, password, fullname. Trả về access token + refresh token + thông tin user.",
+                "operationId": "register",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Đăng ký hợp lệ",
+                                    "value": {
+                                        "email": "test@example.com",
+                                        "password": "Password@123",
+                                        "fullname": "Test User"
+                                    }
+                                },
+                                "invalid": {
+                                    "summary": "Đăng ký lỗi validation",
+                                    "value": {
+                                        "email": "invalid",
+                                        "password": "123",
+                                        "fullname": ""
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Đăng ký thành công",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error — email/password/fullname không hợp lệ",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Email đã tồn tại",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng nhập",
+                "description": "Đăng nhập bằng email + password. Trả về access token + refresh token.",
+                "operationId": "login",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Login hợp lệ",
+                                    "value": {
+                                        "email": "test@example.com",
+                                        "password": "Password@123"
+                                    }
+                                },
+                                "wrong_password": {
+                                    "summary": "Sai mật khẩu",
+                                    "value": {
+                                        "email": "test@example.com",
+                                        "password": "WrongPassword@1"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Đăng nhập thành công",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Email hoặc mật khẩu không chính xác"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Làm mới access token",
+                "description": "Dùng refresh token để lấy cặp token mới. Không cần access token (vì access token đã hết hạn).",
+                "operationId": "refreshToken",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RefreshTokenDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Refresh token hợp lệ",
+                                    "value": {
+                                        "refreshToken": "<paste_refresh_token_here>"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Token mới được tạo",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokensResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Refresh token không hợp lệ hoặc đã hết hạn"
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng xuất",
+                "description": "Revoke tất cả refresh tokens + blacklist access token hiện tại. Cần JWT token trong header.",
+                "operationId": "logout",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Đăng xuất thành công",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "message": "Logout successfully"
+                                    },
+                                    "timestamp": "2026-03-05T15:00:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token không hợp lệ hoặc đã bị thu hồi"
+                    }
+                }
+            }
+        },
+        "/auth/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Yêu cầu reset mật khẩu",
+                "description": "Gửi email chứa reset token. Token có hiệu lực 15 phút.",
+                "operationId": "forgotPassword",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ForgotPasswordDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Email tồn tại",
+                                    "value": {
+                                        "email": "test@example.com"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Email reset đã được gửi (check terminal log cho dev token)",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "message": "Reset password email sent"
+                                    },
+                                    "timestamp": "2026-03-05T15:00:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đặt lại mật khẩu",
+                "description": "Đặt mật khẩu mới bằng reset token (lấy từ forgot-password).",
+                "operationId": "resetPassword",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Reset mật khẩu",
+                                    "value": {
+                                        "token": "<paste_reset_token_from_terminal>",
+                                        "newPassword": "NewPassword@456"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mật khẩu đã được đặt lại",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "message": "Password reset successfully"
+                                    },
+                                    "timestamp": "2026-03-05T15:00:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Token không hợp lệ hoặc đã hết hạn"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Paste access token vào đây (không cần prefix 'Bearer ')"
+            }
+        },
+        "schemas": {
+            "RegisterDto": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password",
+                    "fullname"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "test@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "example": "Password@123",
+                        "description": "Phải chứa: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt (@$!%*?&)"
+                    },
+                    "fullname": {
+                        "type": "string",
+                        "example": "Test User"
+                    }
+                }
+            },
+            "LoginDto": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "test@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "Password@123"
+                    }
+                }
+            },
+            "RefreshTokenDto": {
+                "type": "object",
+                "required": [
+                    "refreshToken"
+                ],
+                "properties": {
+                    "refreshToken": {
+                        "type": "string",
+                        "example": "<paste_refresh_token_here>"
+                    }
+                }
+            },
+            "ForgotPasswordDto": {
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "test@example.com"
+                    }
+                }
+            },
+            "ResetPasswordDto": {
+                "type": "object",
+                "required": [
+                    "token",
+                    "newPassword"
+                ],
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "example": "<paste_reset_token_from_terminal>"
+                    },
+                    "newPassword": {
+                        "type": "string",
+                        "minLength": 8,
+                        "example": "NewPassword@456",
+                        "description": "Phải chứa: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt"
+                    }
+                }
+            },
+            "AuthResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "example": "uuid-string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "test@example.com"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Test User"
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": null
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "example": "ACTIVE"
+                                    }
+                                }
+                            },
+                            "tokens": {
+                                "$ref": "#/components/schemas/TokensResponse"
+                            }
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "example": "2026-03-05T15:00:00.000Z"
+                    }
+                }
+            },
+            "TokensResponse": {
+                "type": "object",
+                "properties": {
+                    "accessToken": {
+                        "type": "string",
+                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    },
+                    "refreshToken": {
+                        "type": "string",
+                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    },
+                    "expiresIn": {
+                        "type": "integer",
+                        "example": 900,
+                        "description": "Thời gian sống của access token (giây). 900 = 15 phút"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "statusCode": {
+                        "type": "integer",
+                        "example": 400
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Validation failed"
+                    },
+                    "path": {
+                        "type": "string",
+                        "example": "/api/v1/auth/register"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "example": "2026-03-05T15:00:00.000Z"
+                    }
+                }
+            }
+        }
+    }
+}
