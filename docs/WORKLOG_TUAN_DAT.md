@@ -4,51 +4,19 @@
 
 ---
 
-## Tuần 1: 12/01 - 18/01
+## Giai đoạn chuẩn bị: 12/01 - 01/02
 
-**Kết quả thực hiện trong tuần:**
-- Họp nhóm lần đầu, thống nhất chọn đề tài "Tìm hiểu công nghệ NestJS"
-- Xác định phạm vi dự án: NestJS backend + PostgreSQL + Prisma ORM
-- Tạo repository GitHub cho dự án (Ttuandatt/Todolist-CCNLTHD)
-- Nghiên cứu tổng quan NestJS: đọc tài liệu chính thức, xem kiến trúc Module-Controller-Service
-
-**Công việc tuần tới:**
-- Cài đặt môi trường phát triển
-- Tìm hiểu sâu hơn về kiến trúc NestJS
-
----
-
-## Tuần 2: 19/01 - 25/01
-
-**Kết quả thực hiện trong tuần:**
+**Tóm tắt (3 tuần đầu dự án):**
+- Họp nhóm lần đầu, thống nhất đề tài, xác định phạm vi dự án
+- Tạo repository GitHub (Ttuandatt/Todolist-CCNLTHD)
+- Nghiên cứu tổng quan NestJS: kiến trúc Module-Controller-Service, Dependency Injection, Decorators
 - Cài đặt môi trường: Node.js, NestJS CLI, Docker Desktop, PostgreSQL
-- Khởi tạo project NestJS bằng `nest new backend`
-- Cấu hình Prisma ORM: cài đặt, tạo `schema.prisma`, kết nối PostgreSQL
-- Tạo skeleton cho Auth Module, User Module, Prisma Module
-- Nghiên cứu Dependency Injection, Decorators, TypeScript fundamentals
-
-**Công việc tuần tới:**
-- Bắt đầu viết tài liệu phân tích yêu cầu
-- Thiết kế cơ sở dữ liệu
+- Khởi tạo project NestJS, cấu hình Prisma ORM, tạo skeleton modules
+- Viết tài liệu phân tích yêu cầu: 145 câu hỏi, 40+ User Stories, 60 Use Cases, 72 chức năng (MoSCoW), NFR
 
 ---
 
-## Tuần 3: 26/01 - 01/02
-
-**Kết quả thực hiện trong tuần:**
-- Viết tài liệu thu thập yêu cầu (Requirements Gathering): 145 câu hỏi phỏng vấn
-- Viết User Stories: 40+ stories với acceptance criteria đầy đủ
-- Viết đặc tả Use Cases: 60 use cases với luồng chính và luồng thay thế
-- Liệt kê chức năng (Features List): 72 chức năng, phân loại MoSCoW (48 Must, 20 Should, 4 Could)
-- Viết yêu cầu phi chức năng (NFR): performance, security, scalability
-
-**Công việc tuần tới:**
-- Thiết kế ERD và Data Dictionary
-- Vẽ các sơ đồ phân tích
-
----
-
-## Tuần 4: 02/02 - 08/02
+## Tuần 1: 02/02 - 08/02
 
 **Kết quả thực hiện trong tuần:**
 - Thiết kế ERD: 13 entities (User, Workspace, Project, Task, Subtask, Comment, Label, Notification, ActivityLog...) với đầy đủ thuộc tính và quan hệ
@@ -65,7 +33,7 @@
 
 ---
 
-## Tuần 5: 09/02 - 15/02
+## Tuần 2: 09/02 - 15/02
 
 **Kết quả thực hiện trong tuần:**
 - Vẽ DFD (Data Flow Diagram): luồng dữ liệu giữa User ↔ System ↔ Database
@@ -83,7 +51,7 @@
 
 ---
 
-## Tuần 6: 16/02 - 22/02
+## Tuần 3: 16/02 - 22/02
 
 **Kết quả thực hiện trong tuần:**
 - Viết Chương 3 (Cài đặt môi trường): Node.js, Nest CLI, Docker PostgreSQL, cấu trúc thư mục project
@@ -100,7 +68,7 @@
 
 ---
 
-## Tuần 7: 23/02 - 01/03
+## Tuần 4: 23/02 - 01/03
 
 **Kết quả thực hiện trong tuần:**
 - Tối ưu thứ tự chương: đổi Kỹ thuật nâng cao (Ch6) trước Authentication (Ch7) — giải thích Guards/Decorators lý thuyết trước khi áp dụng thực tế
@@ -127,7 +95,7 @@
 
 ---
 
-## Tuần 8: 02/03 - 08/03
+## Tuần 5: 02/03 - 08/03
 
 **Kết quả thực hiện trong tuần:**
 - Thiết kế cơ chế **Token Blacklist (InvalidatedToken)**: khi user logout hoặc bị ban, access token bị vô hiệu hóa tức thì qua bảng DB
@@ -162,3 +130,24 @@
 - Hoàn thành Phase 1: Bước 10 (Test toàn bộ trên Hoppscotch/Swagger)
 - Code Phase 2: User Module (get profile, update profile, change password, upload avatar)
 - Hoàn thiện nội dung Chương 2, 8, 9, 10-11 cho báo cáo
+
+---
+
+## Tuần 6: 09/03 - 15/03
+
+**Kết quả thực hiện trong tuần:**
+- Viết code guide **Phase 2 — User Module** (`docs/code_guide/phase-2-user-module.md`): hướng dẫn từng bước implement 4 endpoints (GET/PATCH `/users/me`, change-password, upload avatar), giải thích kỹ thuật Multer, Prisma select, bcrypt verify
+- Viết **`code_guide_rule.md`** — quy tắc chuẩn viết code guide cho cả nhóm: format, cách giải thích, cách viết bước-by-bước
+- Lập kế hoạch phân công toàn nhóm — tạo **`TASK_ASSIGNMENT.md`**:
+  - Phân chia rõ Phase 3 (Vy), Phase 4+5 (Phú), Phase 6+7 (Huyền)
+  - Liệt kê chi tiết endpoints, logic quan trọng, checklist đạt được cho từng người
+  - Bổ sung quy trình Git Workflow đầy đủ: cấu trúc nhánh, lệnh từng bước, commit convention
+  - Timeline 4 tuần còn lại (Tuần 6–9)
+- Cập nhật `WORKLOG_NHOM.md` — thêm nội dung worklog nhóm đang thiếu
+- Chuẩn bị setup git workflow bài bản: tạo nhánh `develop`, nhánh `feature/*`
+
+**Công việc tuần tới:**
+- Hoàn thành Phase 2 — User Module: code + test 4 endpoints
+- Setup git workflow: tạo `develop`, tạo `feature/dat-user-module`, tạo PR sau khi xong
+- Review PR của Vy (WorkspaceModule) sau khi Vy hoàn thành
+- Viết code guide Phase 5 (RBAC + Comments) để Phú follow
