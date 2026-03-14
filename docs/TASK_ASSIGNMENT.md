@@ -2,7 +2,8 @@
 
 > **Cập nhật:** 14/03/2026
 > **Trạng thái hiện tại:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 🔄 (Đạt đang làm)
-> **Timeline còn lại:** ~4 tuần
+> **Tuần hiện tại:** Tuần 6 (09/03 – 15/03)
+> **Timeline còn lại:** Tuần 7 → 9 (3 tuần)
 
 ---
 
@@ -834,9 +835,9 @@ git commit -m "test: add workspace service unit tests"
 
 | Tuần | Vy | Phú | Huyền | Đạt |
 |------|----|-----|-------|-----|
-| **Tuần 6** *(hiện tại)* | Phase 3: WorkspaceModule *(Đạt hỗ trợ)* | Đọc code Vy, chuẩn bị Task DTOs | Setup Redis + Bull locally | Wrap up Phase 2, viết code guide Phase 3, pair-program với Vy |
-| Tuần 7 | Phase 3: ProjectModule + LabelModule | Phase 4: Task CRUD + Subtask | Phase 6: WebSocket Gateway | Review PR Vy, viết code guide Phase 5 |
-| Tuần 8 | Frontend: Workspace/Project UI | Phase 5: RBAC + Comments + ActivityLog | Phase 7: Notifications + File Upload | Phase 10: Dashboard + Search |
+| ~~Tuần 6~~ *(xong)* | ~~Phase 3: WorkspaceModule~~ | ~~Đọc code Vy, chuẩn bị Task DTOs~~ | ~~Setup Redis + Bull locally~~ | ~~Wrap up Phase 2, viết code guide Phase 3~~ |
+| **Tuần 7** *(hiện tại)* | Phase 3: WorkspaceModule *(Đạt hỗ trợ)* + bắt đầu ProjectModule | Phase 4: Task CRUD + Subtask | Phase 6: WebSocket Gateway | **Code Phase 2 (User Module)**, setup git workflow, review PR Vy |
+| Tuần 8 | Phase 3: ProjectModule + LabelModule xong → Frontend Workspace/Project UI | Phase 5: RBAC + Comments + ActivityLog | Phase 7: Notifications + File Upload | Viết code guide Phase 5, Phase 10: Dashboard + Search |
 | Tuần 9 | Frontend: UI polish | Frontend: Kanban + Task UI | Frontend: Realtime sync + Notification UI + Docker | Integration test + Bug fix |
 
 ---
