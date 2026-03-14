@@ -16,76 +16,18 @@
 
 ---
 
-## Tuần 1: 12/01 - 18/01
+## Giai đoạn chuẩn bị: 12/01 - 01/02
 
-**Công việc đã làm ở tuần này:**
-- Lập nhóm với đủ các thành viên
-- Chọn công nghệ sẽ tìm hiểu và ứng dụng sẽ sử dụng công nghệ
-
-**Buổi họp nhóm 1:**
-- Thời gian: 20h 17/01/2026
-- Nội dung: Thảo luận và thống nhất dự án đề tài. Tìm hiểu các nguồn học, tham khảo công nghệ
-
-**Các công việc đang vướng mắc:**
-- /
+**Tóm tắt (3 tuần đầu dự án):**
+- Lập nhóm, thống nhất đề tài "Tìm hiểu công nghệ NestJS", chọn ứng dụng minh họa (TodoList Collaboration)
+- Phân chia tìm hiểu công nghệ: Đạt (NestJS core), Vy (TypeScript nâng cao), Phú (JWT/bcrypt), Huyền (Docker/PostgreSQL)
+- Viết tài liệu phân tích yêu cầu: 145 câu hỏi phỏng vấn, 40+ User Stories, 60 Use Cases, 72 chức năng (MoSCoW), NFR
+- Setup codebase: khởi tạo NestJS project, cấu hình Prisma, tạo skeleton modules
+- Họp nhóm: 17/01, 24/01, 31/01
 
 ---
 
-## Tuần 2: 19/01 - 25/01
-
-**Công việc đã làm ở tuần trước:**
-- Lập nhóm với đủ các thành viên
-- Chọn công nghệ sẽ tìm hiểu và ứng dụng sẽ sử dụng công nghệ
-
-**Công việc sẽ làm ở tuần này:**
-- Phân chia tìm hiểu về Nest.js
-- Viết các phần đầu của báo cáo: Lời mở đầu, giới thiệu (Lý do chọn đề tài, Phạm vi,...)
-
-**Buổi họp nhóm 1:**
-- Thời gian: 21h 24/01/2026
-- Nội dung:
-  - Thảo luận và phân chia nội dung tìm hiểu về công nghệ NestJS
-  - Setup codebase cho project
-  - Cập nhật worklog nhóm & worklog cá nhân
-
-**Các công việc đang vướng mắc:**
-- /
-
----
-
-## Tuần 3: 26/01 - 01/02
-
-**Công việc đã làm ở tuần trước:**
-- Phân chia tìm hiểu về Nest.js
-- Viết các phần đầu của báo cáo: Lời mở đầu, giới thiệu
-
-**Công việc sẽ làm ở tuần này:**
-- Tìm hiểu TypeScript cơ bản & nâng cao
-- Phân tích thiết kế hệ thống: phân tích yêu cầu hệ thống, vẽ ERD, Usecase,...
-- Viết báo cáo
-
-**Phân công cụ thể:**
-| Thành viên | Công việc |
-|:---|:---|
-| Đạt | Viết tài liệu thu thập yêu cầu (145 câu hỏi), User Stories (40+ stories), đặc tả Use Cases (60 use cases) |
-| Vy | Tìm hiểu TypeScript nâng cao (generics, decorators, interfaces). Hỗ trợ viết Features List |
-| Phú | Tìm hiểu JWT, bcrypt, authentication flow. Hỗ trợ viết yêu cầu phi chức năng (NFR) |
-| Huyền | Tìm hiểu Docker, PostgreSQL, cài đặt môi trường. Hỗ trợ viết phân loại MoSCoW |
-
-**Buổi họp nhóm 1:**
-- Thời gian: 21h 31/01/2026
-- Nội dung:
-  - Thảo luận phân chia các công việc ở phần phân tích thiết kế hệ thống
-  - Review tài liệu yêu cầu: 72 chức năng (48 Must, 20 Should, 4 Could)
-  - Cập nhật worklog nhóm & cá nhân
-
-**Các công việc đang vướng mắc:**
-- Phần phân tích yêu cầu khá lớn (145 câu hỏi, 60 use cases) → cần phân chia review cho cả nhóm
-- Chưa xác định rõ phạm vi MVP so với full features
-
----
-
-## Tuần 4: 02/02 - 08/02
+## Tuần 1: 02/02 - 08/02
 
 **Công việc đã làm ở tuần trước:**
 - Hoàn thành tài liệu phân tích yêu cầu (Requirements, User Stories, Use Cases, Features List, NFR)
@@ -119,7 +61,7 @@
 
 ---
 
-## Tuần 5: 09/02 - 15/02
+## Tuần 2: 09/02 - 15/02
 
 **Công việc đã làm ở tuần trước:**
 - Hoàn thành ERD, Data Dictionary, Class/Sequence/Activity Diagram
@@ -154,7 +96,7 @@
 
 ---
 
-## Tuần 6: 16/02 - 22/02
+## Tuần 3: 16/02 - 22/02
 
 **Công việc đã làm ở tuần trước:**
 - Hoàn thành DFD, BFD, WBS, Gantt Chart
@@ -189,7 +131,7 @@
 
 ---
 
-## Tuần 7: 23/02 - 01/03
+## Tuần 4: 23/02 - 01/03
 
 **Công việc đã làm ở tuần trước:**
 - Hoàn thiện nội dung Ch3, Ch4, Ch5, Ch6, Ch7
@@ -226,7 +168,7 @@
 
 ---
 
-## Tuần 8: 02/03 - 08/03
+## Tuần 5: 02/03 - 08/03
 
 **Công việc đã làm ở tuần trước:**
 - Tối ưu thứ tự chương, cập nhật cross-references
@@ -262,3 +204,36 @@
 - `ConfigModule` chưa có trong guide ban đầu → đã sửa, cần đồng bộ lại tài liệu
 - Ch2 (TypeScript cơ bản) vẫn chưa viết → cần ưu tiên ở tuần tới
 - Chưa test forgot-password và reset-password flow (cần email service mock)
+
+---
+
+## Tuần 6: 09/03 - 15/03
+
+**Công việc đã làm ở tuần trước:**
+- Hoàn thành Phase 1 Auth Module (Bước 1–9): DTOs, JwtStrategy, JwtAuthGuard, AuthService, AuthController, migration 17 tables
+- Thiết kế và tích hợp Token Blacklist vào toàn bộ auth flow
+- Tạo Hoppscotch collection, fix lỗi ConfigModule và expiresIn type
+
+**Công việc đã làm ở tuần này:**
+- Hoàn thành bàn giao Phase 1, chuẩn bị bắt đầu Phase 2
+- Lên kế hoạch phân công implementation toàn nhóm (Phases 3–10)
+- Thiết lập quy trình làm việc chuẩn cho giai đoạn code
+
+**Phân công cụ thể:**
+| Thành viên | Công việc |
+|:---|:---|
+| Đạt | Viết code guide Phase 2. Viết `code_guide_rule.md`. Tạo `TASK_ASSIGNMENT.md` (phân công phases 3–10, git workflow, timeline 4 tuần). Cập nhật worklog nhóm |
+| Vy | Đọc `TASK_ASSIGNMENT.md`, nắm rõ scope Phase 3. Ôn lại Prisma relations (WorkspaceMember, Invitation) |
+| Phú | Đọc `TASK_ASSIGNMENT.md`, nắm rõ scope Phase 4+5. Nghiên cứu RBAC Guard pattern trong NestJS |
+| Huyền | Đọc `TASK_ASSIGNMENT.md`, nắm rõ scope Phase 6+7. Setup Redis + Bull trên máy local (`docker-compose up redis`) |
+
+**Công việc sẽ làm ở tuần tới:**
+- Đạt: Code Phase 2 (User Module), setup git workflow `develop` + `feature/*`, review PR Vy
+- Vy: Bắt đầu Phase 3 — `WorkspaceModule` CRUD + invite system
+- Phú: Chuẩn bị DTOs cho Task Module, đọc code Vy để hiểu WorkspaceMember structure
+- Huyền: Bắt đầu Phase 6 — setup `EventsGateway`, WebSocket rooms
+
+**Các công việc đang vướng mắc:**
+- Ch2 (TypeScript cơ bản) vẫn chưa viết → chưa có người phụ trách rõ ràng
+- Chưa test `forgot-password` + `reset-password` flow (cần email service mock)
+- Git workflow chưa bài bản (chỉ có nhánh `main`) → Đạt sẽ setup `develop` + hướng dẫn nhóm trong tuần tới
