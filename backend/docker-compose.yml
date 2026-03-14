@@ -1,6 +1,8 @@
 # Docker Compose configuration cho TodoList Collaboration Project
 # Version: Docker Compose V2 (không cần khai báo version)
 
+name: ccnlthd_backend # Đặt project name cố định để container hiển thị dưới nhóm ccnlthd_backend
+
 services:
   # ============================================
   # PostgreSQL Database Service
