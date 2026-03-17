@@ -7,8 +7,8 @@ Sau khi Auth hoạt động ổn định (Phase 1), Phase 2 tập trung vào **U
 
 ### Cần đạt được gì?
 1. `GET /users/me` — trả thông tin user đang đăng nhập (ẩn password)
-2. `PATCH /users/me` — cập nhật name/bio
-3. `POST /users/me/change-password` — đổi mật khẩu với 3 bước xác thực
+2. `PATCH /users/me` — cập nhật displayName/bio
+3. `PATCH /users/me/change-password` — đổi mật khẩu với 3 bước xác thực
 4. `POST /users/me/avatar` — upload avatar theo chuẩn multipart + giới hạn 5MB
 
 ### Kỹ thuật sử dụng
@@ -19,6 +19,28 @@ Sau khi Auth hoạt động ổn định (Phase 1), Phase 2 tập trung vào **U
 - **Serve static assets** bằng `app.useStaticAssets` để FE truy cập `/uploads/avatars/...`
 
 > Tất cả endpoints này đều yêu cầu JWT (`JwtAuthGuard`). Reuse `@CurrentUser()` để lấy `userId` giống Phase 1.
+
+### Lưu ý về Prisma Schema
+
+Trước khi bắt đầu, cần thêm 2 field vào model `User` trong `prisma/schema.prisma`:
+
+```prisma
+model User {
+  // ...existing fields...
+  name          String        // tên đăng ký ban đầu (từ Phase 1 auth/register)
+  displayName   String?       // tên hiển thị (user tự chỉnh ở Phase 2)
+  bio           String?       // mô tả bản thân ngắn
+  avatar        String?       // tên file avatar trên disk
+  // ...
+}
+```
+
+Sau khi thêm, chạy migration:
+```bash
+npx prisma migrate dev --name add-displayName-bio-to-user
+```
+
+> `name` là tên khi đăng ký (`fullname` từ RegisterDto). `displayName` là tên hiển thị user tự cập nhật sau. `bio` là mô tả bản thân. Cả `displayName` và `bio` đều nullable vì user mới đăng ký chưa có.
 
 ---
 
@@ -41,6 +63,14 @@ import { diskStorage } from 'multer';
 // diskStorage là strategy của Multer để lưu file lên ổ đĩa (disk).
 // Multer có 2 strategy: diskStorage (lưu file) và memoryStorage (giữ trong RAM).
 // Ta dùng diskStorage vì muốn file thật sự nằm trong folder uploads/.
+// Khi dùng diskStorage:
+//   - file.filename: tên file đã được lưu trên disk (do hàm filename() bên dưới quyết định)
+//   - file.path: đường dẫn tuyệt đối đến file đã lưu
+//   - file.buffer: UNDEFINED (vì file đã ghi ra disk, không giữ trong RAM)
+// Khi dùng memoryStorage:
+//   - file.buffer: nội dung file dưới dạng Buffer (giữ trong RAM)
+//   - file.filename: UNDEFINED (chưa lưu ra disk)
+// ⚠️ Nếu dùng diskStorage mà gọi file.buffer → sẽ bị undefined → crash!
 
 import { extname, join } from 'path';
 // extname: lấy đuôi file. Ví dụ extname('photo.jpg') → '.jpg'
@@ -52,6 +82,11 @@ import { existsSync, mkdirSync } from 'fs';
 // existsSync: kiểm tra xem 1 đường dẫn có tồn tại không (trả true/false)
 // mkdirSync: tạo thư mục. Phiên bản Sync = chạy đồng bộ (chặn luồng cho đến khi xong)
 // Ta dùng Sync ở đây vì đây là code khởi tạo — chạy 1 lần khi app start, không cần async.
+//
+// ⚠️ KHÔNG dùng mkdir (async callback) ở đây!
+// Lý do: mkdir chạy bất đồng bộ → folder có thể chưa được tạo xong
+// mà Multer đã nhận request upload → ghi file vào folder chưa tồn tại → crash.
+// mkdirSync đảm bảo folder tồn tại TRƯỚC khi code tiếp tục chạy.
 
 
 // ─── Tự tạo folder nếu chưa có ───────────────────────────────────────────────
@@ -68,7 +103,6 @@ const avatarDir = join(process.cwd(), 'uploads', 'avatars');
 
 if (!existsSync(avatarDir)) {
   // Kiểm tra: nếu folder avatarDir CHƯA tồn tại thì mới tạo.
-  // Tại sao phải kiểm tra trước? mkdirSync sẽ báo lỗi nếu folder đã tồn tại rồi.
   mkdirSync(avatarDir, { recursive: true });
   // recursive: true → tạo tất cả các folder trung gian nếu cần.
   // Ví dụ nếu 'uploads/' cũng chưa có, thì tạo luôn cả 'uploads/' rồi mới tạo 'avatars/' bên trong.
@@ -121,7 +155,7 @@ export const avatarMulterConfig = {
 
     if (!allowed.includes(file.mimetype)) {
       // Nếu loại file không nằm trong danh sách cho phép → từ chối
-      return callback(new Error('Only jpg/png/gif are allowed'));
+      return callback(new Error('Only image/jpeg, image/png, image/gif files are allowed!'), false);
       // Truyền Error vào callback → Multer hiểu là từ chối file này
     }
     callback(null, true);
@@ -140,7 +174,7 @@ DTO (Data Transfer Object) là class định nghĩa **shape** (hình dạng) c�
 
 ### Tại sao cần DTO riêng cho từng use case?
 
-- `UpdateProfileDto`: chỉ cho phép sửa `name` và `bio` — không thể sửa email hay password qua endpoint này
+- `UpdateProfileDto`: chỉ cho phép sửa `displayName` và `bio` — không thể sửa email hay password qua endpoint này
 - `ChangePasswordDto`: cần `currentPassword` để xác minh danh tính trước khi đổi
 
 Nếu dùng chung 1 DTO → khó kiểm soát ai được sửa field gì.
@@ -157,25 +191,24 @@ import { IsOptional, IsString, MaxLength } from 'class-validator';
 export class UpdateProfileDto {
   @IsOptional()
   // Decorator này báo: field này KHÔNG BẮT BUỘC phải có trong request.
-  // Nếu không có @IsOptional() và user gửi request không kèm 'name' → bị reject.
+  // Nếu không có @IsOptional() và user gửi request không kèm 'displayName' → bị reject.
   // Tại sao cần @IsOptional() ở đây?
-  // → Vì user có thể chỉ muốn cập nhật bio mà không cần gửi name (và ngược lại).
+  // → Vì user có thể chỉ muốn cập nhật bio mà không cần gửi displayName (và ngược lại).
 
   @IsString()
-  // Đảm bảo nếu 'name' được gửi lên, nó phải là kiểu string.
-  // Ngăn trường hợp ai đó gửi: { "name": 12345 } hoặc { "name": ["hack"] }
+  // Đảm bảo nếu 'displayName' được gửi lên, nó phải là kiểu string.
+  // Ngăn trường hợp ai đó gửi: { "displayName": 12345 } hoặc { "displayName": ["hack"] }
 
-  @MaxLength(50, { message: 'Tên tối đa 50 ký tự' })
-  // Giới hạn độ dài tối đa. { message: '...' } là custom error message.
-  // Nếu không có message custom → error message mặc định của thư viện bằng tiếng Anh.
-  name?: string;
+  @MaxLength(50, { message: 'Display name must be at most 50 characters long' })
+  // Giới hạn độ dài tối đa.
+  displayName?: string;
   // Dấu ? trong TypeScript có nghĩa là field này optional (có thể undefined).
   // Phải match với @IsOptional() ở trên — nếu không có ? mà có @IsOptional()
   // thì TypeScript sẽ cảnh báo type mismatch.
 
   @IsOptional()
   @IsString()
-  @MaxLength(160, { message: 'Bio tối đa 160 ký tự' })
+  @MaxLength(160, { message: 'Bio must be at most 160 characters long' })
   // 160 ký tự — bằng giới hạn Twitter bio, đủ cho 1 câu giới thiệu ngắn.
   bio?: string;
 }
@@ -188,7 +221,7 @@ import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class ChangePasswordDto {
   @IsString()
-  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu hiện tại' })
+  @IsNotEmpty({ message: 'Current password is required' })
   // @IsNotEmpty() kiểm tra field không được là chuỗi rỗng "".
   // Tại sao cần cả @IsString() và @IsNotEmpty()?
   // → @IsString() chặn non-string (số, array...).
@@ -197,24 +230,26 @@ export class ChangePasswordDto {
   // Không có ? → field này BẮT BUỘC phải có trong request body.
 
   @IsString()
-  @MinLength(8, { message: 'Mật khẩu mới phải >= 8 ký tự' })
+  @MinLength(8, { message: 'New password must be at least 8 characters long' })
   // MinLength: độ dài tối thiểu.
 
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).+$/, {
-    message: 'Mật khẩu mới phải có chữ hoa, chữ thường, số, ký tự đặc biệt',
+  @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, {
+    message: 'New password must contain at least one uppercase letter, one number, and one special character',
   })
   // @Matches() kiểm tra string có khớp với regex không.
-  // Giải thích regex: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).+$/
-  // (?=.*[a-z])     → phải có ít nhất 1 chữ thường
+  // Giải thích regex: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/
   // (?=.*[A-Z])     → phải có ít nhất 1 chữ hoa
   // (?=.*\d)        → phải có ít nhất 1 chữ số
   // (?=.*[@$!%*?&]) → phải có ít nhất 1 ký tự đặc biệt trong danh sách
   // Đây là "lookahead assertions" — không consume ký tự, chỉ kiểm tra điều kiện.
-  // Regex này giống hệt Phase 1 để đảm bảo chính sách mật khẩu nhất quán.
+  //
+  // ⚠️ Lưu ý: regex này KHÁC với regex ở RegisterDto (Phase 1).
+  // RegisterDto yêu cầu thêm (?=.*[a-z]) (chữ thường). ChangePasswordDto không yêu cầu.
+  // Nếu muốn chính sách nhất quán, nên đồng bộ regex giữa 2 DTO.
   newPassword: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
+  @IsNotEmpty({ message: 'Confirm password is required' })
   confirmPassword: string;
   // Tại sao không validate confirmPassword === newPassword ở đây?
   // → class-validator chỉ biết thông tin của từng field riêng lẻ,
@@ -251,7 +286,7 @@ import * as bcrypt from 'bcrypt';
 
 import { promises as fs } from 'fs';
 // import promises từ fs để dùng API async/await thay vì callback.
-// Đặt alias là 'fs' để gọi như: fs.rm(), fs.unlink()...
+// Đặt alias là 'fs' để gọi như: fs.unlink()...
 // Tại sao dùng async? → Xóa file là I/O operation — nên dùng async để không block server.
 
 import { join } from 'path';
@@ -273,7 +308,8 @@ export class UserService {
   private readonly profileSelect = {
     id: true,
     email: true,
-    name: true,
+    name: true,           // tên đăng ký ban đầu (từ auth/register)
+    displayName: true,    // tên hiển thị (user tự chỉnh)
     avatar: true,
     status: true,
     bio: true,
@@ -287,6 +323,10 @@ export class UserService {
   // → Tránh lặp code: getProfile, updateProfile, uploadAvatar đều trả cùng shape.
   //   Nếu sau này muốn thêm field (ví dụ: 'phone'), chỉ sửa 1 chỗ này.
   // 'as const' → TypeScript hiểu đây là literal type, giúp type-check chính xác hơn.
+  //
+  // ⚠️ Mọi field ở đây PHẢI tồn tại trong Prisma schema (model User).
+  //   Nếu select field không tồn tại → Prisma throw runtime error.
+  //   Ví dụ: nếu thêm `phone: true` mà schema chưa có field phone → crash.
   //
   // Tại sao KHÔNG include 'password'?
   // → Mật khẩu đã được hash nhưng vẫn là dữ liệu nhạy cảm.
@@ -303,7 +343,7 @@ export class UserService {
       // Khác với findFirst (tìm record đầu tiên match điều kiện) — ở đây dùng findUnique vì id là unique.
       select: this.profileSelect,
       // select: chỉ lấy những field được liệt kê.
-      // Prisma sẽ tạo câu SQL: SELECT id, email, name, avatar, ... FROM users WHERE id = $1
+      // Prisma sẽ tạo câu SQL: SELECT id, email, name, "displayName", avatar, ... FROM users WHERE id = $1
       // (KHÔNG có cột password trong câu SELECT → không bao giờ load lên server).
     });
     if (!user) {
@@ -320,8 +360,8 @@ export class UserService {
   // ─── updateProfile ────────────────────────────────────────────────────────────
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    if (!dto.name && !dto.bio) {
-      throw new BadRequestException('Không có dữ liệu để cập nhật');
+    if (!dto.displayName && !dto.bio) {
+      throw new BadRequestException('At least one field (displayName or bio) must be provided for update');
       // Tại sao check này?
       // → Cả 2 field đều @IsOptional() → user có thể gửi request body rỗng {}.
       //   Nếu không check, ta sẽ gọi prisma.user.update() với data: {} → vô nghĩa.
@@ -330,15 +370,14 @@ export class UserService {
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.displayName ? { displayName: dto.displayName } : {}),
         // Spread conditional object:
-        // Nếu dto.name có giá trị → thêm { name: 'giá trị đã trim' } vào data
-        // Nếu dto.name undefined → thêm {} (không làm gì)
-        // .trim() → xóa khoảng trắng đầu/cuối. Ví dụ: '  John  ' → 'John'
+        // Nếu dto.displayName có giá trị → thêm { displayName: '...' } vào data
+        // Nếu dto.displayName undefined → thêm {} (không làm gì)
         // Tại sao không dùng data: dto trực tiếp?
-        // → Nếu dto.name = undefined và ta set name: undefined → Prisma sẽ set field thành NULL trong DB!
+        // → Nếu dto.displayName = undefined và ta set displayName: undefined → Prisma sẽ set field thành NULL trong DB!
         //   Spread conditional đảm bảo chỉ update field nào thực sự được gửi lên.
-        ...(dto.bio ? { bio: dto.bio.trim() } : {}),
+        ...(dto.bio ? { bio: dto.bio } : {}),
       },
       select: this.profileSelect,
       // Trả về profile mới sau khi update — tiện cho FE update state ngay mà không cần gọi thêm GET.
@@ -353,8 +392,8 @@ export class UserService {
   async changePassword(userId: string, dto: ChangePasswordDto) {
     // Bước 1: Kiểm tra confirmPassword
     if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException('Xác nhận mật khẩu không khớp');
-      // Check này đáng lẽ nên làm ở DTO nhưng class-validator không hỗ trợ cross-field validation.
+      throw new BadRequestException('New password and confirm password do not match');
+      // Check này đáng lẽ nên làm ở DTO nhưng class-validator không hỗ trợ cross-field validation dễ dàng.
       // → Làm ở service là đúng chỗ.
     }
 
@@ -377,15 +416,13 @@ export class UserService {
     // → bcrypt dùng "salt" ngẫu nhiên trong hash → cùng 1 password nhưng hash mỗi lần khác nhau.
     //   Nên KHÔNG thể so sánh bằng ===. Phải dùng bcrypt.compare() để nó tự xử lý salt.
     if (!matches) {
-      throw new BadRequestException('Mật khẩu hiện tại không chính xác');
-      // Không nên nói "User không tồn tại" hay thông tin cụ thể hơn → tránh leak thông tin.
+      throw new BadRequestException('Invalid current password');
     }
 
     // Bước 4: Đảm bảo mật khẩu mới khác mật khẩu cũ
     const isSame = await bcrypt.compare(dto.newPassword, user.password);
     if (isSame) {
-      throw new BadRequestException('Mật khẩu mới phải khác mật khẩu cũ');
-      // UX: đổi mật khẩu mà đặt y chang cũ thì vô nghĩa.
+      throw new BadRequestException('New password cannot be the same as current password');
     }
 
     // Bước 5: Hash mật khẩu mới
@@ -429,14 +466,14 @@ export class UserService {
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     // Express.Multer.File: TypeScript type cho file đã được Multer xử lý.
-    // Object này có các field: fieldname, originalname, mimetype, size, filename, path...
-
-    if (!file) {
-      throw new BadRequestException('File avatar không tồn tại');
-      // Tại sao check null ở đây dù ParseFilePipe đã validate ở controller?
-      // → Defense in depth: service không nên tin tưởng rằng caller đã validate đúng.
-      //   Nếu sau này có code gọi uploadAvatar() không qua HTTP (ví dụ: test, script), vẫn an toàn.
-    }
+    // Vì dùng diskStorage, object này có các field quan trọng:
+    //   - file.fieldname: tên field trong form-data ('avatar')
+    //   - file.originalname: tên file gốc user upload ('my-photo.jpg')
+    //   - file.filename: tên file Multer đã lưu trên disk ('avatar-1741939200000-472839201.jpg')
+    //   - file.path: đường dẫn tuyệt đối trên disk
+    //   - file.mimetype: loại file ('image/jpeg')
+    //   - file.size: kích thước (bytes)
+    //   ⚠️ file.buffer: UNDEFINED khi dùng diskStorage!
 
     // Lấy avatar cũ của user (nếu có) để xóa sau
     const user = await this.prisma.user.findUnique({
@@ -444,47 +481,33 @@ export class UserService {
       select: { avatar: true },
       // Chỉ lấy field avatar — không cần load cả profile.
     });
-
-    // Tạo đường dẫn để lưu vào DB và trả về cho FE
-    const storedPath = `uploads/avatars/${file.filename}`;
-    // file.filename: tên file đã được Multer đặt theo logic ở multer.config.ts
-    // Ví dụ: 'avatar-1741939200000-472839201.jpg'
-
-    const publicPath = `/${storedPath}`;
-    // Thêm '/' ở đầu để thành URL path tuyệt đối.
-    // Ví dụ: '/uploads/avatars/avatar-1741939200000-472839201.jpg'
-    // FE sẽ dùng: `http://localhost:3333${publicPath}` để hiển thị ảnh.
-
-    // Cập nhật avatar trong DB
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: { avatar: publicPath },
-      select: this.profileSelect,
-    });
-
-    // Xóa avatar cũ khỏi disk (nếu user đã có avatar trước đó)
-    if (user?.avatar) {
-      // user?.avatar: optional chaining — nếu user là null thì không crash, trả undefined.
-
-      const absolutePath = join(process.cwd(), user.avatar.replace(/^\//, ''));
-      // user.avatar là '/uploads/avatars/old-file.jpg' (có dấu / đầu).
-      // .replace(/^\//, '') → xóa dấu / đầu → 'uploads/avatars/old-file.jpg'
-      // join(process.cwd(), ...) → ghép thành đường dẫn tuyệt đối trên OS.
-      // Tại sao phải xóa dấu / đầu?
-      // → join('/home/app', '/uploads/avatars/file.jpg') trên Linux
-      //   → kết quả là '/uploads/avatars/file.jpg' (bỏ qua phần trước dấu /)
-      //   → Sai! Nên phải bỏ dấu / trước khi join.
-
-      await fs.rm(absolutePath, { force: true });
-      // fs.rm() xóa file. { force: true } → không báo lỗi nếu file không tồn tại.
-      // Tại sao dùng force: true?
-      // → Nếu file bị xóa thủ công từ disk, không muốn server crash vì lỗi "file not found".
-      //
-      // Tại sao xóa avatar cũ SAU KHI update DB thành công?
-      // → Nếu xóa file trước rồi DB update fail → user mất ảnh cũ mà ảnh mới không được lưu → mất data.
-      //   Thứ tự: DB trước, disk sau là an toàn hơn.
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
+    // Xóa avatar cũ khỏi disk (nếu user đã có avatar trước đó)
+    if (user.avatar) {
+      const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
+      // user.avatar chứa tên file (vd: 'avatar-1741939200000-472839201.jpg')
+      // join() ghép thành đường dẫn tuyệt đối trên disk.
+      await fs.unlink(oldPath).catch(() => {});
+      // fs.unlink() xóa file. .catch(() => {}) → bỏ qua lỗi nếu file không tồn tại.
+      // Tại sao bỏ qua lỗi?
+      // → Nếu file bị xóa thủ công từ disk, không muốn server crash vì lỗi "file not found".
+    }
+
+    // Cập nhật avatar mới trong database
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: file.filename },
+      // file.filename: tên file Multer đã lưu trên disk.
+      // Ví dụ: 'avatar-1741939200000-472839201.jpg'
+      // Ta lưu CHỈ tên file (không phải full path) vì:
+      //   - Gọn hơn trong DB
+      //   - FE tự ghép URL: `/uploads/avatars/${user.avatar}`
+      //   - Nếu sau này đổi thư mục upload hoặc chuyển sang S3, chỉ cần đổi logic FE/serving
+      select: this.profileSelect,
+    });
     return updated;
   }
 }
@@ -516,13 +539,13 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { avatarMulterConfig } from '../common/config/multer.config';
+import { avatarMulterConfig } from 'src/common/config/multer.config';
 
 @Controller('users')
 // @Controller('users') → tất cả routes trong class này đều bắt đầu bằng /users
@@ -563,9 +586,9 @@ export class UserController {
     return this.userService.updateProfile(userId, dto);
   }
 
-  @Post('me/change-password')
-  // Route: POST /api/v1/users/me/change-password
-  // Dùng POST vì thao tác này có side effect (thay đổi state) và không idempotent.
+  @Patch('me/change-password')
+  // Route: PATCH /api/v1/users/me/change-password
+  // Dùng PATCH vì đây là partial update cho user resource (chỉ thay đổi password).
   changePassword(
     @CurrentUser('id') userId: string,
     @Body() dto: ChangePasswordDto,
@@ -596,8 +619,9 @@ export class UserController {
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
           // Kiểm tra file size <= 5MB. Cùng giới hạn với multerConfig.limits.fileSize.
 
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif)$/ }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif)$/i }),
           // Kiểm tra tên file có đuôi hợp lệ. Dùng regex match phần đuôi file.
+          // Flag 'i' = case-insensitive (chấp nhận .JPG, .Png, ...)
           // Lưu ý: validator này check theo tên file, multerConfig.fileFilter check theo mimetype.
           // Hai cách check bổ sung cho nhau — tránh tình huống rename file để bypass.
         ],
@@ -627,7 +651,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 // MulterModule: NestJS wrapper cho Multer, cần register để FileInterceptor hoạt động.
 
-import { avatarMulterConfig } from '../common/config/multer.config';
+import { avatarMulterConfig } from 'src/common/config/multer.config';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 
@@ -699,10 +723,8 @@ async function bootstrap() {
   //   Request: GET http://localhost:3333/uploads/avatars/avatar-123.jpg
   //   NestJS: tìm file tại D:/IT/.../backend/uploads/avatars/avatar-123.jpg → trả về file đó.
   //
-  // Tại sao prefix là '/uploads/' không phải '/'?
-  //   → Nếu prefix là '/', browser có thể truy cập MỌI file trong folder uploads/.
-  //     Với prefix '/uploads/', URL phải bắt đầu bằng /uploads/ mới được serve.
-  //     Nếu sau này thêm subfolder uploads/private/ thì vẫn kiểm soát được.
+  // Vì avatar trong DB chỉ lưu tên file (vd: 'avatar-123.jpg'),
+  // FE cần tự ghép URL: `/uploads/avatars/${user.avatar}`
 
   await app.listen(process.env.PORT ?? 3333);
 }
@@ -716,24 +738,25 @@ bootstrap();
 Chạy server: `npm run start:dev`, rồi test theo thứ tự:
 
 1. **Login** (từ Phase 1) → copy `accessToken`
-2. **GET /api/v1/users/me** → phải trả profile, không có field `password`
-3. **PATCH /api/v1/users/me** với `{ "name": "John Updated" }` → verify `updatedAt` thay đổi
-4. **POST /api/v1/users/me/change-password**:
+2. **GET /api/v1/users/me** → phải trả profile (có `name`, `displayName`, `bio`, KHÔNG có `password`)
+3. **PATCH /api/v1/users/me** với `{ "displayName": "John Updated" }` → verify `updatedAt` thay đổi
+4. **PATCH /api/v1/users/me/change-password**:
    - Sai `currentPassword` → 400
    - `newPassword !== confirmPassword` → 400
    - Đúng tất cả → 200, login lại bằng password mới
 5. **POST /api/v1/users/me/avatar** (chọn Content-Type: multipart/form-data, field name: `avatar`):
-   - File jpg/png dưới 5MB → 200, nhận về `avatar: '/uploads/avatars/...'`
+   - File jpg/png dưới 5MB → 200, nhận về `avatar: 'avatar-1741939200000-472839201.jpg'`
    - File PDF hoặc trên 5MB → 400
-6. **Mở browser**: `http://localhost:3333/uploads/avatars/<filename>` → ảnh hiển thị trực tiếp
+6. **Mở browser**: `http://localhost:3333/uploads/avatars/<avatar-filename>` → ảnh hiển thị trực tiếp
 
 ---
 
 ## Checklist Phase 2
 
+- [ ] Thêm `displayName String?` và `bio String?` vào Prisma schema + chạy migration
 - [ ] Tạo `src/common/config/multer.config.ts`
 - [ ] Thêm DTOs `UpdateProfileDto`, `ChangePasswordDto`
-- [ ] Viết `UserService` với 4 method chính
+- [ ] Viết `UserService` với 4 method chính (getProfile, updateProfile, changePassword, uploadAvatar)
 - [ ] Viết `UserController` (4 endpoints, guard toàn controller)
 - [ ] Update `UserModule` + import vào `AppModule`
 - [ ] Bổ sung `useStaticAssets` trong `main.ts`
@@ -744,16 +767,30 @@ Chạy server: `npm run start:dev`, rồi test theo thứ tự:
 ## Q&A
 
 **Q1: Có cần cho phép đổi email không?**
-> Chưa. Theo PRD Phase 2 chỉ sửa name/bio. Đổi email phức tạp hơn vì phải re-verify — để lên Phase sau.
+> Chưa. Theo PRD Phase 2 chỉ sửa displayName/bio. Đổi email phức tạp hơn vì phải re-verify — để lên Phase sau.
 
-**Q2: Sau khi đổi mật khẩu có cần logout user không?**
+**Q2: `name` vs `displayName` — khác gì nhau?**
+> `name` là tên khi đăng ký (`fullname` từ RegisterDto Phase 1), lưu ngay khi tạo tài khoản. `displayName` là tên hiển thị user tự chỉnh sau. Nếu `displayName` là null, FE nên dùng `name` làm fallback.
+
+**Q3: Sau khi đổi mật khẩu có cần logout user không?**
 > Có. Ta đã revoke toàn bộ refresh token trong DB. FE nên clear token khỏi localStorage rồi redirect về trang Login.
 
-**Q3: Production có xóa file avatar cũ không?**
-> Có — `fs.rm()` chạy sau khi update DB thành công. Khi chuyển sang S3 sau này, thay đoạn `fs.rm()` bằng `s3.deleteObject()` của AWS SDK.
+**Q4: Tại sao `uploadAvatar` lưu tên file thay vì full URL path?**
+> Lưu chỉ tên file (`avatar-123.jpg`) thay vì full path (`/uploads/avatars/avatar-123.jpg`) vì:
+> - Gọn hơn trong DB
+> - FE tự ghép URL: `/uploads/avatars/${user.avatar}`
+> - Nếu sau này đổi sang S3, chỉ cần thay logic ghép URL ở FE, không cần migrate data trong DB
 
-**Q4: Tại sao xóa avatar cũ SAU KHI update DB?**
-> An toàn hơn. Nếu xóa file trước → DB update fail → user mất ảnh cũ, ảnh mới không được lưu. Thứ tự đúng: update DB thành công → xóa file cũ.
+**Q5: Tại sao xóa avatar cũ TRƯỚC khi update DB (trong code hiện tại)?**
+> Trong code hiện tại, ta xóa file cũ trước rồi mới update DB. Nếu update DB fail sau khi xóa file → user mất ảnh cũ. Thứ tự an toàn hơn là update DB trước, xóa file sau. Tuy nhiên, DB update rất hiếm khi fail (trừ khi DB down), nên risk thấp.
 
-**Q5: Multer và ParseFilePipe đều validate, cái nào chạy trước?**
+**Q6: Multer và ParseFilePipe đều validate, cái nào chạy trước?**
 > Multer (FileInterceptor) chạy trước: nhận multipart request, parse, check fileFilter, lưu file xuống disk. Sau đó ParseFilePipe chạy: kiểm tra lại size và type. Nếu ParseFilePipe fail, file đã được lưu nhưng endpoint vẫn trả lỗi — trường hợp này file "mồ côi" trên disk, nhưng vì multerConfig đã filter nghiêm trước đó, tình huống này hiếm xảy ra.
+
+**Q7: `diskStorage` vs `memoryStorage` — khi nào dùng cái nào?**
+> - `diskStorage`: file tự động ghi ra ổ đĩa → `file.filename` có giá trị, `file.buffer` = undefined. Phù hợp khi lưu file locally.
+> - `memoryStorage`: file giữ trong RAM → `file.buffer` có giá trị, `file.filename` = undefined. Phù hợp khi cần xử lý file trước khi lưu (resize ảnh, upload lên S3...).
+> ⚠️ **Lỗi phổ biến**: dùng diskStorage nhưng code lại gọi `file.buffer` → undefined → crash.
+
+**Q8: Regex changePassword khác regex register?**
+> Đúng. RegisterDto yêu cầu `(?=.*[a-z])` (phải có chữ thường). ChangePasswordDto không yêu cầu chữ thường. Đây có thể là oversight — nếu muốn chính sách nhất quán, đồng bộ regex giữa 2 DTO.
