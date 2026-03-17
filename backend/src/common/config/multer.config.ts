@@ -1,16 +1,12 @@
 import {diskStorage} from 'multer';
 import {extname, join} from 'path';
-import { existsSync, mkdir } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
-const avatarDir = join(process.cwd(), 'uploads', 'avatars'); 
+const avatarDir = join(process.cwd(), 'uploads', 'avatars');
 
-// Ensure the directory exists
+// Ensure the directory exists (sync vì chạy 1 lần khi app khởi tạo)
 if(!existsSync(avatarDir)) {
-    mkdir(avatarDir, { recursive: true }, (err) => {
-        if (err) {
-            console.error('Error creating avatar directory:', err);
-        }
-    });
+    mkdirSync(avatarDir, { recursive: true });
 }
 
 // ─── Cấu hình Multer ─────────────────────────────────────────────────────────
