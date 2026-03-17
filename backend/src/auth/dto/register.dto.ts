@@ -22,4 +22,8 @@ export class RegisterDto {
     @IsString()
     @IsNotEmpty({ message: 'Fullname should not be empty' })
     fullname: string;
+
+    @IsString()
+    @IsNotEmpty({ message: 'Display name should not be empty' })
+    displayName: string;
 }

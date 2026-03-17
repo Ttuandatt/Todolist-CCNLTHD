@@ -64,6 +64,8 @@ model User {
   email         String     @unique
   password      String
   name          String
+  displayName   String?
+  bio           String?
   avatar        String?
   status        UserStatus @default(ACTIVE)
   emailVerified Boolean    @default(false)

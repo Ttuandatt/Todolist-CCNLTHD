@@ -3,7 +3,7 @@
     "info": {
         "title": "TodoList Collaboration API",
         "description": "API collection cho dự án TodoList Collaboration — CCNLTHD",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "contact": {
             "name": "Tuan Dat"
         }
@@ -21,7 +21,7 @@
         },
         {
             "name": "User",
-            "description": "User Profile — Xem/sửa thông tin cá nhân (Phase 2 — chưa implement)"
+            "description": "User Profile — Xem/sửa thông tin cá nhân, đổi mật khẩu, upload avatar"
         },
         {
             "name": "Workspace",
@@ -330,6 +330,301 @@
                     }
                 }
             }
+        },
+        "/users/me": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Lấy thông tin hồ sơ cá nhân",
+                "description": "Trả về thông tin profile của user đang đăng nhập. Cần JWT token.",
+                "operationId": "getProfile",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy profile thành công",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfileResponse"
+                                },
+                                "example": {
+                                    "id": "uuid-string",
+                                    "email": "test@example.com",
+                                    "name": "Test User",
+                                    "displayName": null,
+                                    "avatar": null,
+                                    "status": "ACTIVE",
+                                    "bio": null,
+                                    "emailVerified": false,
+                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
+                                    "createdAt": "2026-03-15T08:00:00.000Z",
+                                    "updatedAt": "2026-03-17T10:00:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token không hợp lệ hoặc đã hết hạn"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Cập nhật thông tin hồ sơ",
+                "description": "Cập nhật displayName và/hoặc bio. Ít nhất 1 trường phải được cung cấp. Cần JWT token.",
+                "operationId": "updateProfile",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProfileDto"
+                            },
+                            "examples": {
+                                "both_fields": {
+                                    "summary": "Cập nhật cả displayName và bio",
+                                    "value": {
+                                        "displayName": "Dat Nguyen",
+                                        "bio": "Backend developer at CCNLTHD"
+                                    }
+                                },
+                                "display_name_only": {
+                                    "summary": "Chỉ cập nhật displayName",
+                                    "value": {
+                                        "displayName": "Dat Nguyen"
+                                    }
+                                },
+                                "bio_only": {
+                                    "summary": "Chỉ cập nhật bio",
+                                    "value": {
+                                        "bio": "Backend developer at CCNLTHD"
+                                    }
+                                },
+                                "empty_body": {
+                                    "summary": "Không gửi trường nào → lỗi 400",
+                                    "value": {}
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cập nhật profile thành công",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfileResponse"
+                                },
+                                "example": {
+                                    "id": "uuid-string",
+                                    "email": "test@example.com",
+                                    "name": "Test User",
+                                    "displayName": "Dat Nguyen",
+                                    "avatar": null,
+                                    "status": "ACTIVE",
+                                    "bio": "Backend developer at CCNLTHD",
+                                    "emailVerified": false,
+                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
+                                    "createdAt": "2026-03-15T08:00:00.000Z",
+                                    "updatedAt": "2026-03-17T10:30:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Không có trường nào được cung cấp để cập nhật",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token không hợp lệ hoặc đã hết hạn"
+                    }
+                }
+            }
+        },
+        "/users/me/change-password": {
+            "patch": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Đổi mật khẩu",
+                "description": "Đổi mật khẩu khi đã đăng nhập. Cần nhập mật khẩu hiện tại + mật khẩu mới + xác nhận. Sau khi đổi, tất cả refresh token bị thu hồi (buộc đăng nhập lại).",
+                "operationId": "changePassword",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordDto"
+                            },
+                            "examples": {
+                                "valid": {
+                                    "summary": "Đổi mật khẩu hợp lệ",
+                                    "value": {
+                                        "currentPassword": "Password@123",
+                                        "newPassword": "NewPassword@456",
+                                        "confirmPassword": "NewPassword@456"
+                                    }
+                                },
+                                "mismatch": {
+                                    "summary": "Mật khẩu xác nhận không khớp",
+                                    "value": {
+                                        "currentPassword": "Password@123",
+                                        "newPassword": "NewPassword@456",
+                                        "confirmPassword": "Different@789"
+                                    }
+                                },
+                                "same_password": {
+                                    "summary": "Mật khẩu mới trùng mật khẩu cũ",
+                                    "value": {
+                                        "currentPassword": "Password@123",
+                                        "newPassword": "Password@123",
+                                        "confirmPassword": "Password@123"
+                                    }
+                                },
+                                "wrong_current": {
+                                    "summary": "Sai mật khẩu hiện tại",
+                                    "value": {
+                                        "currentPassword": "WrongPassword@1",
+                                        "newPassword": "NewPassword@456",
+                                        "confirmPassword": "NewPassword@456"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Đổi mật khẩu thành công",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "message": "Password changed successfully"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error — mật khẩu không khớp, trùng mật khẩu cũ, hoặc sai mật khẩu hiện tại",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token không hợp lệ hoặc đã hết hạn"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                }
+            }
+        },
+        "/users/me/avatar": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Upload ảnh đại diện",
+                "description": "Upload avatar cho user. Chấp nhận file image/jpeg, image/png, image/gif. Tối đa 5MB. Avatar cũ sẽ bị xóa. Cần JWT token.",
+                "operationId": "uploadAvatar",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "avatar"
+                                ],
+                                "properties": {
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "File ảnh (JPEG, PNG, GIF). Tối đa 5MB."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Upload avatar thành công",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfileResponse"
+                                },
+                                "example": {
+                                    "id": "uuid-string",
+                                    "email": "test@example.com",
+                                    "name": "Test User",
+                                    "displayName": "Dat Nguyen",
+                                    "avatar": "avatar-1710654321000-123456789.jpg",
+                                    "status": "ACTIVE",
+                                    "bio": "Backend developer at CCNLTHD",
+                                    "emailVerified": false,
+                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
+                                    "createdAt": "2026-03-15T08:00:00.000Z",
+                                    "updatedAt": "2026-03-17T11:00:00.000Z"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "File không hợp lệ — sai định dạng hoặc vượt quá 5MB",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token không hợp lệ hoặc đã hết hạn"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -426,6 +721,110 @@
                         "minLength": 8,
                         "example": "NewPassword@456",
                         "description": "Phải chứa: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt"
+                    }
+                }
+            },
+            "UpdateProfileDto": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "example": "Dat Nguyen",
+                        "description": "Tên hiển thị (tối đa 50 ký tự)"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "maxLength": 160,
+                        "example": "Backend developer at CCNLTHD",
+                        "description": "Mô tả bản thân (tối đa 160 ký tự)"
+                    }
+                }
+            },
+            "ChangePasswordDto": {
+                "type": "object",
+                "required": [
+                    "currentPassword",
+                    "newPassword",
+                    "confirmPassword"
+                ],
+                "properties": {
+                    "currentPassword": {
+                        "type": "string",
+                        "example": "Password@123",
+                        "description": "Mật khẩu hiện tại"
+                    },
+                    "newPassword": {
+                        "type": "string",
+                        "minLength": 8,
+                        "example": "NewPassword@456",
+                        "description": "Mật khẩu mới — phải chứa: 1 chữ hoa, 1 số, 1 ký tự đặc biệt (@$!%*?&)"
+                    },
+                    "confirmPassword": {
+                        "type": "string",
+                        "example": "NewPassword@456",
+                        "description": "Xác nhận mật khẩu mới (phải khớp với newPassword)"
+                    }
+                }
+            },
+            "UserProfileResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "example": "uuid-string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "example": "test@example.com"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Test User"
+                    },
+                    "displayName": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Dat Nguyen"
+                    },
+                    "avatar": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ACTIVE",
+                            "INACTIVE",
+                            "BANNED"
+                        ],
+                        "example": "ACTIVE"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    },
+                    "emailVerified": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "lastLoginAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "example": "2026-03-17T10:00:00.000Z"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-03-15T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-03-17T10:00:00.000Z"
                     }
                 }
             },
