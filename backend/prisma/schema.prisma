@@ -56,26 +56,6 @@ enum NotificationType {
   PROJECT_CREATED
 }
 
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  EXPIRED
-  REVOKED
-}
-
-enum ActivityLogAction {
-  WORKSPACE_CREATED
-  WORKSPACE_RENAMED
-  WORKSPACE_ARCHIVED
-  WORKSPACE_DELETED
-  MEMBER_ADDED
-  MEMBER_ROLE_CHANGED
-  MEMBER_REMOVED
-  INVITE_SENT
-  INVITE_ACCEPTED
-  INVITE_REVOKED
-}
-
 // ==================== MODELS ====================
 
 // 1. User - Người dùng hệ thống
@@ -104,6 +84,7 @@ model User {
   notifications        Notification[]      @relation("NotificationRecipient")
   actorNotifications   Notification[]      @relation("NotificationActor")
   activityLogs         ActivityLog[]
+  invitations          Invitation[]
   refreshTokens        RefreshToken[]
   passwordResets       PasswordReset[]
 
@@ -116,8 +97,6 @@ model Workspace {
   id          String   @id @default(uuid())
   name        String
   description String?
-  archived    Boolean  @default(false)
-  deletedAt   DateTime?
   ownerId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -128,7 +107,7 @@ model Workspace {
   projects     Project[]
   labels       Label[]
   activityLogs ActivityLog[]
-  invites      WorkspaceInvite[]
+  invitations  Invitation[]
 
   @@index([ownerId])
   @@map("workspaces")
@@ -145,7 +124,6 @@ model WorkspaceMember {
   // Relations
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invites   WorkspaceInvite[] @relation("WorkspaceInviteInviter")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -344,7 +322,7 @@ model Notification {
 // 13. ActivityLog - Lịch sử hoạt động
 model ActivityLog {
   id          String   @id @default(uuid())
-  action      ActivityLogAction
+  action      String
   entityType  String
   entityId    String
   userId      String
@@ -363,27 +341,24 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// 14. WorkspaceInvite - Lời mời tham gia workspace
-model WorkspaceInvite {
-  id                 String            @id @default(uuid())
-  workspaceId        String
-  email              String
-  role               WorkspaceRole     @default(MEMBER)
-  status             InvitationStatus  @default(PENDING)
-  token              String            @unique
-  invitedByMemberId  String
-  expiresAt          DateTime
-  revokedAt          DateTime?
-  acceptedAt         DateTime?
-  createdAt          DateTime          @default(now())
+// 14. Invitation - Lời mời tham gia workspace
+model Invitation {
+  id          String         @id @default(uuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole  @default(MEMBER)
+  token       String         @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime       @default(now())
 
   // Relations
-  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedBy  WorkspaceMember @relation("WorkspaceInviteInviter", fields: [invitedByMemberId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation(fields: [invitedById], references: [id])
 
+  @@index([token])
   @@index([workspaceId])
-  @@index([workspaceId, status])
-  @@index([workspaceId, email, status])
   @@index([email])
   @@map("invitations")
 }
