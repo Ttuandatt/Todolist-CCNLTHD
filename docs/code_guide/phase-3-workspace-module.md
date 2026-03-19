@@ -1,6 +1,8 @@
 # Code Guide — Phase 3 Workspace Suite
 
 > Thiết kế chi tiết đã được chốt tại [docs/superpowers/specs/2026-03-19-workspace-suite-design.md](docs/superpowers/specs/2026-03-19-workspace-suite-design.md). File này đóng vai trò “cookbook”: copy-paste code, đọc comment, và triển khai thủ công theo đúng thứ tự.
+>
+> Ngày tạo code guide: 2026-03-19
 
 ---
 
