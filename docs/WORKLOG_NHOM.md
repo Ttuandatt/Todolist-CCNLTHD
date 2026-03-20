@@ -237,3 +237,33 @@
 - Ch2 (TypeScript cơ bản) vẫn chưa viết → chưa có người phụ trách rõ ràng
 - Chưa test `forgot-password` + `reset-password` flow (cần email service mock)
 - Git workflow chưa bài bản (chỉ có nhánh `main`) → Đạt sẽ setup `develop` + hướng dẫn nhóm trong tuần tới
+
+---
+
+## Tuần 7: 16/03 - 22/03
+
+**Công việc đã làm ở tuần trước:**
+- Đạt: Viết code guide Phase 2, `code_guide_rule.md`, `TASK_ASSIGNMENT.md` (phân công phases 3–10, git workflow, timeline)
+- Vy: Nắm rõ scope Phase 3, ôn Prisma relations
+- Phú: Nghiên cứu RBAC Guard pattern, nắm scope Phase 4+5
+- Huyền: Setup Redis + Bull local, nắm scope Phase 6+7
+
+**Công việc đã làm ở tuần này:**
+
+| Thành viên | Công việc |
+|:---|:---|
+| Đạt | Hoàn thành **Phase 2 — User Module** (4 endpoints: `GET/PATCH /users/me`, `change-password`, `upload avatar`): UserController, UserService, Multer config, 2 DTOs, Prisma migration `add_display_name_bio_to_user`. Viết **78 test cases** (`02-user-module-test-cases.md`) + `TEST_DATA_STRATEGY.md`. Viết **`report_writing_rule.md`** (10 mục). Viết **Chương 8** (7 Sequence Diagrams Mermaid, ERD chi tiết, thiết kế bảo mật). Viết **Chương 9** (triển khai Auth + User modules). Viết **Workspace Suite Design Spec**. Viết **Phase 3 Code Guide** (~1442 dòng). Chạy migration `workspace-suite-sync`. Tạo 3 implementation plans. Bắt đầu Phase 3 skeleton (4 files: config, types, decorators) |
+| Vy | Bắt đầu **Phase 3** trên nhánh `feature/(dat-vy)-workspace-module` |
+| Phú | Chuẩn bị **Phase 4+5** (Task/Project Modules) |
+| Huyền | Chuẩn bị **Phase 6+7** (WebSocket/Realtime, Notifications) |
+
+**Công việc sẽ làm ở tuần tới:**
+- Đạt: Hoàn thành Phase 3 skeleton (Bước 3-7: PermissionService, ContextInterceptor, các module), fix BUG-U-001, review PR Vy
+- Vy: Tiếp tục Phase 3 — WorkspaceMember + WorkspaceInvite endpoints
+- Phú: Bắt đầu Phase 4 — Task Module (CRUD + assignment)
+- Huyền: Tiếp tục Phase 6 — `EventsGateway`, WebSocket rooms
+
+**Các công việc đang vướng mắc:**
+- BUG-U-001: Multer fileFilter upload `.txt` trả HTTP 500 thay vì 400 → cần fix trước khi merge
+- Ch2 (TypeScript cơ bản) vẫn chưa viết → cần phân công rõ ràng
+- Branch structure chưa chuẩn (`feature` nhánh từ `main` thay vì `develop`) → Đạt có plan fix, chờ confirm

@@ -1,106 +1,185 @@
-# Code Guide — Phase 3 Workspace Suite
+# Code Guide — Phase 3: Workspace Suite 🚀
 
-> Thiết kế chi tiết đã được chốt tại [docs/superpowers/specs/2026-03-19-workspace-suite-design.md](docs/superpowers/specs/2026-03-19-workspace-suite-design.md). File này đóng vai trò “cookbook”: copy-paste code, đọc comment, và triển khai thủ công theo đúng thứ tự.
+> Ngày tạo: 2026-03-19
 >
-> Ngày tạo code guide: 2026-03-19
+> Phase này là lúc ứng dụng bắt đầu "có hồn" — từ một hệ thống đăng nhập đơn thuần, ta sẽ biến nó thành nơi mọi người **cùng làm việc**. Nghĩ kiểu Trello Team, Slack Workspace, Notion Workspace — vùng đất chung để nhóm tổ chức mọi thứ.
 
 ---
 
-## 1. Phase Snapshot
+## Tổng quan — Ta sẽ làm gì ở Phase này?
 
-| Track | Details |
-| --- | --- |
-| Goal | Ship Workspace CRUD + member management + invitation lifecycle cùng shared permission layer, logging, tests |
-| Scope | 3 module NestJS: `Workspace`, `WorkspaceMember`, `WorkspaceInvite` + Prisma schema + config limits + activity log |
-| Prerequisites | Phase 2 (Auth/User) đã stable, `.env` có `MAX_WORKSPACES_PER_USER`, `MAX_MEMBERS_PER_WORKSPACE`, DB migration ready |
-    this.permissionService.assertMember(membership); // Tất cả member (OWNER/ADMIN/MEMBER) được phép
+Nếu Phase 1 là "ai được vào cửa?" (Auth), Phase 2 là "người ta trông như thế nào?" (User Profile), thì Phase 3 là **"người ta làm việc ở đâu?"**.
 
----
+Ta cần xây 3 thứ lớn:
 
-## 2. Execution Flow (checklist)
+| Module | Nhiệm vụ | Ví dụ thực tế |
+|:---|:---|:---|
+| **Workspace** | CRUD không gian làm việc | Tạo workspace "Dự án CCNLTHD", đổi tên, archive, xóa |
+| **WorkspaceMember** | Quản lý thành viên + phân quyền | Thêm bạn vào workspace, thăng Admin, đuổi ra, chuyển quyền Owner |
+| **WorkspaceInvite** | Vòng đời lời mời | Gửi email mời, accept/reject invite, revoke invite |
 
-| Step | Việc cần làm | Chi tiết |
-| --- | --- | --- |
-| 1 | Tạo provider cấu hình giới hạn workspace/member/invite | [3.1](#31-step-1-config-limits--env-guardrails) |
-| 2 | Update Prisma schema + migration (workspace.archived, invite.status, index) | [3.2](#32-step-2-prisma-schema--migration) |
-| 3 | Dựng shared layer (types, decorators, interceptor, permission service, guards) | [3.3](#33-step-3-shared-workspace-context-layer) |
-| 4 | Viết WorkspaceModule: DTOs, controller, service, response types | [3.4](#34-step-4-workspace-crud-module) |
-| 5 | Viết WorkspaceMemberModule: DTOs, controller, service, ownership transfer | [3.5](#35-step-5-member-management-module) |
-| 6 | Viết WorkspaceInviteModule: bulk invite, accept/reject token, revoke | [3.6](#36-step-6-invitation-lifecycle-module) |
-| 7 | Hook activity logging, domain events, reusable helper | [3.7](#37-step-7-activity-log--events) |
-| 8 | Viết test (unit + e2e) + tài liệu Hoppscotch | [3.8](#38-step-8-testing-playbook) |
+Ngoài ra ta còn cần dựng **permission layer** — bộ xương phân quyền dùng chung cho cả 3 module. Và **activity log** — ghi nhật ký ai làm gì, khi nào.
+
+### Điều kiện tiên quyết
+- Phase 2 (Auth + User) đã chạy ổn
+- `.env` có sẵn các biến config cho workspace limits
+- Docker PostgreSQL đang chạy, migration sẵn sàng
 
 ---
 
-## 3. Step-by-step Implementation
+## Bước 1: Config giới hạn — Đừng hardcode! 🔧
 
-### 3.1 Step 1. Config limits & env guardrails
+### Tại sao?
 
-**Tại sao?** Không hard-code giới hạn vào service; đọc từ `.env` để QA/Prod điều chỉnh được. Cần provider riêng để inject qua `ConfigService`.
+Câu hỏi đầu tiên: tại sao không hardcode limit vào service luôn cho nhanh? Kiểu `if (count >= 50) throw error`?
 
-```ts
-// src/common/config/workspace-limits.config.ts
+Vì khi lên production, QA muốn test với limit 5, staging cần 20, prod cần 200 — biết điều chỉnh ở đâu? Sửa code rồi deploy lại? Không, ta đọc từ `.env` — thay đổi được mà không cần build lại.
+
+### Kỹ thuật
+- `registerAs` từ `@nestjs/config` — gom nhóm config dưới 1 namespace
+- Inject typed config vào bất kỳ service nào qua `ConfigService`
+
+### Code
+
+📁 **File:** `src/common/config/workspace-limits.config.ts`
+
+```typescript
 import { registerAs } from '@nestjs/config';
-// registerAs cho phép gom nhóm config dưới 1 key trong ConfigService.
+// registerAs cho phép gom config vào 1 key
+// Thay vì this.config.get('MAX_WORKSPACES'), ta viết this.config.get('workspaceLimits.maxWorkspacesPerUser')
+// → Gọn hơn, type-safe hơn, không sợ typo
 
 export interface WorkspaceLimitConfig {
-  maxWorkspacesPerUser: number; // Limit số workspace mà 1 user có thể tạo/sở hữu
-  maxMembersPerWorkspace: number; // Limit số member trong 1 workspace (owner được tính)
-  inviteExpiryDays: number; // Số ngày token invitation còn hiệu lực
+  maxWorkspacesPerUser: number;     // Mỗi user tạo được bao nhiêu workspace?
+  maxMembersPerWorkspace: number;   // Mỗi workspace chứa bao nhiêu người?
+  inviteExpiryDays: number;         // Link mời có hiệu lực bao nhiêu ngày?
 }
 
-// Register workspace limit namespace để mọi module inject và đọc typed config dễ dàng
 export default registerAs(
-  'workspaceLimits',
+  'workspaceLimits',    // ← namespace key, dùng khi inject
   (): WorkspaceLimitConfig => {
+    // Helper: parse chuỗi env → số, có default rõ ràng
     const toNumber = (value: string | undefined, fallback: string) =>
-      parseInt(value ?? fallback, 10); // parse chuỗi env -> số nguyên với default rõ ràng
+      parseInt(value ?? fallback, 10);
 
     return {
-      maxWorkspacesPerUser: toNumber(process.env.MAX_WORKSPACES_PER_USER, '50'),
-      maxMembersPerWorkspace: toNumber(process.env.MAX_MEMBERS_PER_WORKSPACE, '200'),
-      inviteExpiryDays: toNumber(process.env.WORKSPACE_INVITE_EXPIRY_DAYS, '7'),
+      maxWorkspacesPerUser: toNumber(process.env.WORKSPACE_LIMIT_MAX_PER_USER, '5'),
+      maxMembersPerWorkspace: toNumber(process.env.WORKSPACE_LIMIT_MAX_MEMBER, '50'),
+      inviteExpiryDays: toNumber(process.env.WORKSPACE_LIMIT_INVITE_EXPIRY_DAYS, '7'),
     };
   },
 );
 ```
 
-- Trong `AppModule` (hoặc `WorkspaceModule`), nhớ `ConfigModule.forFeature(workspaceLimitConfig)`.
-- Tạo helper trong service: `this.config.get<number>('workspaceLimits.maxMembersPerWorkspace')`.
+📁 **Thêm vào `.env`:**
 
-### 3.2 Step 2. Prisma schema & migration
+```env
+WORKSPACE_LIMIT_MAX_PER_USER=5
+WORKSPACE_LIMIT_MAX_MEMBER=50
+WORKSPACE_LIMIT_INVITE_EXPIRY_DAYS=7
+```
 
-**Tại sao?** Workspace cần cờ `archived`; invite cần enum `status` + token unique + index để list nhanh.
+> 💡 Nhớ import config này vào module: `ConfigModule.forFeature(workspaceLimitConfig)` — hoặc nếu `ConfigModule` đã `isGlobal: true` thì chỉ cần load file config.
+
+---
+
+## Bước 2: Kiểm tra Prisma Schema 🗄️
+
+### Tại sao?
+
+Trước khi code, ta cần chắc chắn schema đã có đủ 3 model cốt lõi: **Workspace**, **WorkspaceMember**, **WorkspaceInvite**. Tin vui: schema hiện tại (`prisma/schema.prisma`) đã thiết kế sẵn từ giai đoạn PRD rồi — ta chỉ cần hiểu nó.
+
+### Các model liên quan đến Phase 3
+
+📁 **File:** `prisma/schema.prisma`
+
+#### Workspace — Không gian làm việc nhóm
 
 ```prisma
-// prisma/schema.prisma
 model Workspace {
-  id          String   @id @default(cuid())   // UUID được Prisma gen
-  name        String                           // Tên workspace do user nhập
-  description String?                          // Mô tả optional
-  archived    Boolean  @default(false)         // Cờ soft-delete, block mutation khi true
-  members     WorkspaceMember[]                // One-to-many sang bảng membership
-  invites     WorkspaceInvite[]                // Danh sách invite pending
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  archived    Boolean   @default(false)    // Cờ soft-delete — khi true thì block mọi mutation
+  deletedAt   DateTime?                    // Timestamp xóa mềm — null = chưa xóa
+  ownerId     String                       // FK đến User — ai tạo workspace này
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members      WorkspaceMember[]
+  projects     Project[]
+  labels       Label[]
+  activityLogs ActivityLog[]
+  invites      WorkspaceInvite[]
+
+  @@index([ownerId])          // Tìm nhanh "workspace nào của user X?"
+  @@map("workspaces")         // Tên bảng trong DB = workspaces (snake_case, không PascalCase)
 }
+```
 
-model WorkspaceInvite {
-  id          String            @id @default(cuid())   // Token record
-  workspace   Workspace         @relation(fields: [workspaceId], references: [id])
+> **Hỏi:** Tại sao có cả `ownerId` lẫn `WorkspaceMember` với role OWNER? Vì `ownerId` là shortcut query nhanh — không cần join bảng member chỉ để biết ai là chủ. Còn `WorkspaceMember` với role OWNER dùng cho hệ thống phân quyền thống nhất.
+
+#### WorkspaceMember — Thành viên trong workspace
+
+```prisma
+model WorkspaceMember {
+  id          String        @id @default(uuid())
   workspaceId String
-  email       String                                 // Email người được mời
-  role        WorkspaceRole     @default(MEMBER)     // Role target khi accept
-  status      InvitationStatus  @default(PENDING)
-  token       String            @unique              // String gửi cho client
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  acceptedAt  DateTime?
-  invitedByMemberId String                           // WorkspaceMember tạo invite
-  invitedBy        WorkspaceMember @relation(fields: [invitedByMemberId], references: [id])
-  createdAt   DateTime @default(now())
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())     // Biết member join lúc nào — hữu ích cho audit
 
-  @@index([workspaceId, status])                    // Liệt kê pending nhanh
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invites   WorkspaceInvite[] @relation("WorkspaceInviteInviter")
+
+  @@unique([workspaceId, userId])   // 1 user chỉ join 1 lần — chặn duplicate membership
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+```
+
+> **Chú ý `@@unique([workspaceId, userId])`** — nếu không có constraint này, code có thể vô tình tạo 2 membership cho cùng 1 user. Database-level protection luôn chắc hơn application-level check.
+
+#### WorkspaceInvite — Lời mời tham gia
+
+```prisma
+model WorkspaceInvite {
+  id                 String            @id @default(uuid())
+  workspaceId        String
+  email              String                                  // Email người được mời
+  role               WorkspaceRole     @default(MEMBER)      // Role sẽ nhận khi accept
+  status             InvitationStatus  @default(PENDING)
+  token              String            @unique               // Token unique gửi cho client
+  invitedByMemberId  String                                  // Ai mời? (FK đến WorkspaceMember)
+  expiresAt          DateTime                                // Hết hạn khi nào?
+  revokedAt          DateTime?                               // Bị thu hồi lúc nào? (null = chưa)
+  acceptedAt         DateTime?                               // Được chấp nhận lúc nào?
+  createdAt          DateTime          @default(now())
+
+  // Relations
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy  WorkspaceMember @relation("WorkspaceInviteInviter", fields: [invitedByMemberId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])                  // List invite theo workspace
+  @@index([workspaceId, status])          // List invite PENDING nhanh
+  @@index([workspaceId, email, status])   // Check "email này đã được mời chưa?"
+  @@index([email])                        // Tìm tất cả invite của 1 email
+  @@map("invitations")
+}
+```
+
+#### Enums liên quan
+
+```prisma
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 enum InvitationStatus {
@@ -109,93 +188,122 @@ enum InvitationStatus {
   EXPIRED
   REVOKED
 }
+
+enum ActivityLogAction {
+  WORKSPACE_CREATED
+  WORKSPACE_RENAMED
+  WORKSPACE_ARCHIVED
+  WORKSPACE_DELETED
+  MEMBER_ADDED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  INVITE_SENT
+  INVITE_ACCEPTED
+  INVITE_REVOKED
+}
 ```
 
-- Command:
-  ```bash
-  npx prisma migrate dev --name add-workspace-archived-and-invite-status
-  npx prisma generate
-  ```
-- Nếu repo có seed, nhớ update để tạo cờ `archived = false` mặc định.
+### Migration
 
-### 3.3 Step 3. Shared workspace context layer
+Nếu schema đã có sẵn tất cả models trên (kiểm tra bằng `npx prisma validate`), chỉ cần chạy migration nếu có thay đổi gì:
 
-#### 3.3.1 Types + Express augmentation
+```bash
+npx prisma migrate dev --name workspace-suite
+npx prisma generate
+```
 
-```ts
-// src/workspace/types/workspace-context.type.ts
+> ⚠️ Nếu migration đã chạy từ trước (Phase 1) và schema không thay đổi gì → **không cần chạy lại**. Chỉ chạy khi có diff.
+
+---
+
+## Bước 3: Shared Layer — Bộ xương phân quyền 🦴
+
+Đây là bước quan trọng nhất Phase 3. Ta sẽ xây **một lần**, dùng **mãi mãi** cho mọi route của Workspace, Member, Invite.
+
+Ý tưởng: trước khi request vào đến Controller → một Interceptor sẽ:
+1. Tìm workspace theo `:workspaceId` trong URL
+2. Check user hiện tại có phải member không
+3. Tính toán permissions (canInvite, canDelete, canArchive...)
+4. Gắn kết quả vào `request.workspaceContext` — Controller cứ lấy ra dùng
+
+Giống security guard ở cửa club — check giấy tờ xong rồi đóng dấu lên tay. Vào bên trong, bartender chỉ cần nhìn dấu, không cần check lại. 🎫
+
+### 3a. Types — Định nghĩa "dấu đóng tay"
+
+📁 **File:** `src/workspace/types/workspace-context.type.ts`
+
+```typescript
 import { Workspace, WorkspaceMember } from '@prisma/client';
-// Lấy type trực tiếp từ Prisma để tránh duplicate interface.
+// Lấy type từ Prisma luôn — nếu schema đổi thì type tự cập nhật
 
 export type WorkspaceRole = WorkspaceMember['role'];
-// Nếu sau này schema đổi enum, code ở đây tự cập nhật.
 
 export interface WorkspacePermissions {
-  canManageMembers: boolean; // Cho phép add/kick/promote member
-  canInvite: boolean;        // Cho phép tạo invite
-  canArchive: boolean;       // Chỉ owner được archive
-  canDelete: boolean;        // Force delete chỉ khi archived + owner
+  canManageMembers: boolean;   // Thêm/đuổi/thăng chức member
+  canInvite: boolean;          // Gửi lời mời
+  canArchive: boolean;         // Chỉ owner
+  canDelete: boolean;          // Chỉ owner + đã archived
 }
 
 export interface WorkspaceContextPayload {
-  workspace: Workspace;                 // Bản ghi workspace để controller khỏi query lại
-  membership: WorkspaceMember | null;   // Thành viên hiện tại (null nếu chưa join)
-  permissions: WorkspacePermissions;    // Các flag đã tính toán sẵn
+  workspace: Workspace;                // Record workspace — Controller khỏi query lại
+  membership: WorkspaceMember | null;  // Membership hiện tại (null = chưa join)
+  permissions: WorkspacePermissions;   // Các flag đã tính sẵn
 }
 ```
 
-```ts
-// src/types/express.d.ts (hoặc tương đương)
+📁 **File:** `src/types/express.d.ts` — mở rộng Request typing
+
+```typescript
 import { WorkspaceContextPayload } from '../workspace/types/workspace-context.type';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    workspaceContext?: WorkspaceContextPayload; // Thêm field tuỳ biến vào Request typing
+    workspaceContext?: WorkspaceContextPayload;
+    // TypeScript mặc định không biết request.workspaceContext
+    // Dòng này "dạy" TypeScript: "ê, request có thêm field này nha"
   }
 }
 ```
 
-#### 3.3.2 Decorators
+### 3b. Decorators — Rút data cho gọn
 
-```ts
-// src/workspace/decorators/workspace.decorator.ts
+Giống `@CurrentUser()` ở Phase 1, ta tạo decorator để Controller chỉ cần viết `@WorkspaceCtx() ctx` thay vì `req.workspaceContext`.
+
+📁 **File:** `src/workspace/decorators/workspace.decorator.ts`
+
+```typescript
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { WorkspaceContextPayload } from '../types/workspace-context.type';
 
-// Lấy full payload (workspace + membership + permissions) đã nhét vào request bởi interceptor
-export const WorkspaceContext = createParamDecorator(
+// Lấy toàn bộ context (workspace + membership + permissions)
+export const WorkspaceCtx = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): WorkspaceContextPayload => {
     const request = ctx.switchToHttp().getRequest();
     if (!request.workspaceContext) {
-      throw new Error('WorkspaceContext not resolved. Did you apply the interceptor?');
+      throw new Error('WorkspaceContext not resolved — quên apply interceptor?');
+      // Lỗi lập trình, không phải lỗi user → throw Error thường, không phải HttpException
     }
     return request.workspaceContext;
   },
 );
-
-// Shortcut decorator giúp controller chỉ cần inject workspace record
-export const Workspace = createParamDecorator((_data, ctx) => {
-  return WorkspaceContext(null, ctx).workspace; // Controller chỉ cần @Workspace() workspace
-});
-
-// Shortcut decorator giúp inject membership hiện tại (null nếu chưa tham gia)
-export const WorkspaceMembership = createParamDecorator((_data, ctx) => {
-  return WorkspaceContext(null, ctx).membership; // Hoặc lấy membership hiện tại
-});
 ```
 
-#### 3.3.3 Permission service
+### 3c. Permission Service — "Luật chơi"
 
-```ts
-// src/workspace/services/workspace-permission.service.ts
+Đây là nơi ta viết **toàn bộ rule phân quyền** của workspace. Mỗi khi cần check "user này có được làm X không?", ta gọi service này.
+
+📁 **File:** `src/workspace/services/workspace-permission.service.ts`
+
+```typescript
 import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
 import { Workspace, WorkspaceMember } from '@prisma/client';
 import { WorkspacePermissions, WorkspaceRole } from '../types/workspace-context.type';
 
 @Injectable()
-// Trung tâm tính toán và enforce quyền trong workspace
 export class WorkspacePermissionService {
-  // Ráp snapshot membership vào các flag permissions phục vụ guard/controller
+
+  // Tính toán snapshot permissions cho 1 user trong 1 workspace
   getPermissions(workspace: Workspace, membership: WorkspaceMember | null): WorkspacePermissions {
     const role = membership?.role ?? null;
     const isOwner = role === 'OWNER';
@@ -204,26 +312,27 @@ export class WorkspacePermissionService {
     return {
       canManageMembers: isOwner || isAdmin,
       canInvite: isOwner || isAdmin,
-      canArchive: isOwner,
-      canDelete: isOwner && workspace.archived,
+      canArchive: isOwner,                        // Chỉ owner mới được archive
+      canDelete: isOwner && workspace.archived,   // Xóa hẳn = owner + đã archived
     };
   }
 
-  // Cấm mutate khi workspace ở trạng thái archived
+  // ── Assert helpers — throw nếu không đủ quyền ──
+
   assertActive(workspace: Workspace): void {
     if (workspace.archived) {
       throw new BadRequestException('WORKSPACE_ARCHIVED');
+      // Workspace đã bị đóng băng — không cho thêm member, tạo task, mời,...
     }
   }
 
-  // Yêu cầu user phải là thành viên
   assertMember(membership: WorkspaceMember | null): void {
     if (!membership) {
       throw new ForbiddenException('WORKSPACE_MEMBER_REQUIRED');
+      // Chưa là thành viên → không được xem bất kỳ thứ gì bên trong
     }
   }
 
-  // Allow cả ADMIN và OWNER cho các hành động quan trọng
   assertAdminOrOwner(membership: WorkspaceMember | null): void {
     this.assertMember(membership);
     if (membership!.role !== 'OWNER' && membership!.role !== 'ADMIN') {
@@ -231,7 +340,6 @@ export class WorkspacePermissionService {
     }
   }
 
-  // Chỉ owner mới đi qua guard này
   assertOwner(membership: WorkspaceMember | null): void {
     this.assertMember(membership);
     if (membership!.role !== 'OWNER') {
@@ -239,248 +347,174 @@ export class WorkspacePermissionService {
     }
   }
 
-  // Kiểm tra logic thăng/giáng chức, đặc biệt với owner transfer
+  // Check chuyển quyền hợp lệ — tránh các case vô lý
   assertRoleTransition(current: WorkspaceRole, next: WorkspaceRole, hasTransferTarget: boolean): void {
     if (next === 'OWNER' && !hasTransferTarget) {
       throw new BadRequestException('NO_TRANSFER_TARGET');
+      // Muốn promote ai đó thành Owner thì phải chỉ rõ chuyển Owner cũ đi đâu
     }
     if (current === 'OWNER' && next !== 'OWNER' && !hasTransferTarget) {
       throw new BadRequestException('TRANSFER_OWNERSHIP_FIRST');
-    }
-    if (current === 'OWNER' && next === 'OWNER') {
-      throw new BadRequestException('OWNER_ALREADY_ASSIGNED');
+      // Owner muốn tự hạ mình → phải chuyển quyền cho người khác trước
     }
   }
 }
 ```
 
-#### 3.3.4 Context interceptor
+### 3d. Context Interceptor — "Security guard" 🔒
 
-```ts
-// src/workspace/interceptors/workspace-context.interceptor.ts
+Interceptor này chạy **trước** mọi route handler có `:workspaceId`. Nó làm 3 việc: tìm workspace, tìm membership, tính permissions → gắn lên request.
+
+📁 **File:** `src/workspace/interceptors/workspace-context.interceptor.ts`
+
+```typescript
 import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-  NotFoundException,
-  UnauthorizedException,
+  CallHandler, ExecutionContext, Injectable, NestInterceptor,
+  NotFoundException, UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacePermissionService } from '../services/workspace-permission.service';
 import { WorkspaceContextPayload } from '../types/workspace-context.type';
 
 @Injectable()
-// Interceptor inject context payload dựa trên :workspaceId trong route
 export class WorkspaceContextInterceptor implements NestInterceptor {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: WorkspacePermissionService,
   ) {}
 
-  // Resolve workspace + membership rồi cache thẳng lên request cho downstream dùng
   async intercept(context: ExecutionContext, next: CallHandler) {
     const request = context.switchToHttp().getRequest();
-    const workspaceId = request.params?.workspaceId; // (1) lấy workspaceId từ params
-    if (!workspaceId) {
-      return next.handle(); // (2) route không cần context thì cho đi tiếp
-    }
-    if (!request.user?.id) {
-      throw new UnauthorizedException(); // (3) bảo vệ trong trường hợp chưa login
-    }
+    const workspaceId = request.params?.workspaceId;
 
+    // Route không có :workspaceId? Cho đi tiếp, không phải việc của ta
+    if (!workspaceId) return next.handle();
+
+    // Chưa login? Chặn luôn
+    if (!request.user?.id) throw new UnauthorizedException();
+
+    // Tìm workspace + chỉ load membership của user hiện tại (không load hết tất cả member)
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       include: {
         members: {
-          where: { userId: request.user.id }, // (4) chỉ load membership của user hiện tại
+          where: { userId: request.user.id },  // Chỉ lấy membership của "mình"
         },
       },
     });
 
-    if (!workspace) {
-      throw new NotFoundException('WORKSPACE_NOT_FOUND'); // (5) workspace không tồn tại -> 404
-    }
+    if (!workspace) throw new NotFoundException('WORKSPACE_NOT_FOUND');
 
-    const membership = workspace.members[0] ?? null; // (6) user có thể chưa join
+    const membership = workspace.members[0] ?? null;
     const payload: WorkspaceContextPayload = {
       workspace,
       membership,
-      permissions: this.permissionService.getPermissions(workspace, membership), // (7) precompute permissions
+      permissions: this.permissionService.getPermissions(workspace, membership),
     };
 
-    request.workspaceContext = payload; // (8) cache vào request để guard/controller tái sử dụng
-    return next.handle(); // (9) chuyển quyền cho handler tiếp theo
+    // Gắn lên request — Controller và Guard phía sau cứ lấy ra dùng
+    request.workspaceContext = payload;
+    return next.handle();
   }
 }
 ```
 
-- Apply interceptor ở controller level: `@UseInterceptors(WorkspaceContextInterceptor)` trên các route chứa `:workspaceId`.
+> Dùng ở Controller: `@UseInterceptors(WorkspaceContextInterceptor)` — chỉ đặt trên route nào có `:workspaceId`.
 
-#### 3.3.5 Guards
+### 3e. Guards — "Bouncer" ở từng cấp độ
 
-```ts
-// src/workspace/guards/workspace-owner.guard.ts
+Ta tạo 3 guard tương ứng 3 cấp phân quyền: Member → Admin → Owner.
+
+📁 **File:** `src/workspace/guards/workspace-member.guard.ts`
+
+```typescript
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { WorkspacePermissionService } from '../services/workspace-permission.service';
 
 @Injectable()
-// Guard dành cho endpoint chỉ owner truy cập
-export class WorkspaceOwnerGuard implements CanActivate {
-  constructor(private readonly permissionService: WorkspacePermissionService) {}
-
-  // Throw nếu current membership không phải owner
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const membership = request.workspaceContext?.membership ?? null;
-    this.permissionService.assertOwner(membership); // guard throw nếu không phải owner
-    return true;
-  }
-}
-```
-
-```ts
-// src/workspace/guards/workspace-admin.guard.ts
-@Injectable()
-// Guard yêu cầu ADMIN hoặc OWNER, dùng cho quản trị workspace
-export class WorkspaceAdminGuard implements CanActivate {
-  constructor(private readonly permissionService: WorkspacePermissionService) {}
-
-  // Delegate sang permission service để check role
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const membership = request.workspaceContext?.membership ?? null;
-    this.permissionService.assertAdminOrOwner(membership);
-    return true;
-  }
-}
-```
-
-```ts
-// src/workspace/guards/workspace-member.guard.ts
-@Injectable()
-// Guard cho các endpoint cần membership bất kỳ
 export class WorkspaceMemberGuard implements CanActivate {
   constructor(private readonly permissionService: WorkspacePermissionService) {}
 
-  // Chặn request nếu user chưa join workspace
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const membership = request.workspaceContext?.membership ?? null;
-    this.permissionService.assertMember(membership);
-    return true;
+    this.permissionService.assertMember(request.workspaceContext?.membership ?? null);
+    return true;  // Nếu assertMember throw → request bị chặn, không tới đây
   }
 }
 ```
 
-### 3.4 Step 4. Workspace CRUD module
+📁 **File:** `src/workspace/guards/workspace-admin.guard.ts` — tương tự, gọi `assertAdminOrOwner`.
 
-#### 3.4.1 DTOs + custom validator
+📁 **File:** `src/workspace/guards/workspace-owner.guard.ts` — tương tự, gọi `assertOwner`.
 
-```ts
-// src/workspace/validators/at-least-one-field.validator.ts
-import {
-  registerDecorator,
-  ValidationArguments,
-  ValidationOptions,
-} from 'class-validator';
+---
 
-type Constructor<T> = new (...args: any[]) => T;
+## Bước 4: Workspace CRUD — Tạo, sửa, archive, xóa 📦
 
-// Custom validator đảm bảo DTO truyền tối thiểu 1 trong các field định nghĩa
-export function AtLeastOneField<T>(propertyNames: (keyof T)[], options?: ValidationOptions) {
-  return function (target: Constructor<T>, propertyName: string) {
-    registerDecorator({
-      name: 'AtLeastOneField',
-      target: target.constructor,
-      propertyName,
-      constraints: [propertyNames],
-      options,
-      validator: {
-        validate(_value: unknown, args: ValidationArguments) {
-          const [fields] = args.constraints as [(keyof T)[]];
-          return fields.some((field) => {
-            const value = (args.object as T)[field];
-            return value !== undefined && value !== null && value !== '';
-          });
-        },
-        defaultMessage(args: ValidationArguments) {
-          const [fields] = args.constraints as [(keyof T)[]];
-          return `At least one of: ${fields.join(', ')} must be provided.`;
-        },
-      },
-    });
-  };
-}
-```
+### Tại sao?
 
-```ts
-// src/workspace/dto/create-workspace.dto.ts
+Workspace là **container** — nơi chứa projects, tasks, members. Không có workspace → không có gì cả.
+
+### 4a. DTOs
+
+📁 **File:** `src/workspace/dto/create-workspace.dto.ts`
+
+```typescript
 import { IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
-// Payload dùng cho POST /workspaces
 export class CreateWorkspaceDto {
   @IsString()
   @MinLength(3)
   @MaxLength(80)
-  name!: string; // Chỉ cần name khi tạo
+  name!: string;     // Bắt buộc — workspace phải có tên
 
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  description?: string; // Optional description giữ trong limit
+  description?: string;   // Mô tả tùy chọn
 }
 ```
 
-```ts
-// src/workspace/dto/update-workspace.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { AtLeastOneField } from '../validators/at-least-one-field.validator';
+📁 **File:** `src/workspace/dto/update-workspace.dto.ts`
 
-@AtLeastOneField<UpdateWorkspaceDto>(['name', 'description'])
-// Payload cho PATCH /workspaces/:workspaceId
+```typescript
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+
 export class UpdateWorkspaceDto {
   @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(80)
-  name?: string; // Có thể đổi name
+  name?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  description?: string; // Hoặc description
+  description?: string;
 }
+// Cả 2 đều optional — nhưng ít nhất phải gửi 1 field, nếu body rỗng thì đang update cái gì?
 ```
 
-```ts
-// src/workspace/dto/archive-workspace.dto.ts
+📁 **File:** `src/workspace/dto/archive-workspace.dto.ts`
+
+```typescript
 import { IsBoolean } from 'class-validator';
 
-// DTO giúp bật/tắt cờ archived
 export class ArchiveWorkspaceDto {
   @IsBoolean()
-  archived!: boolean; // true -> archive, false -> unarchive
+  archived!: boolean;  // true = archive, false = unarchive
 }
 ```
 
-#### 3.4.2 Controller
+### 4b. Controller
 
-```ts
-// src/workspace/workspace.controller.ts
+📁 **File:** `src/workspace/workspace.controller.ts`
+
+```typescript
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-  UseInterceptors,
+  Body, Controller, Delete, Get, Param, Patch, Post, Query,
+  UseGuards, UseInterceptors,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceService } from './workspace.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
@@ -489,70 +523,78 @@ import { WorkspaceContextInterceptor } from './interceptors/workspace-context.in
 import { WorkspaceOwnerGuard } from './guards/workspace-owner.guard';
 import { WorkspaceAdminGuard } from './guards/workspace-admin.guard';
 import { WorkspaceMemberGuard } from './guards/workspace-member.guard';
-import { Workspace } from './decorators/workspace.decorator';
-import { WorkspaceMember } from './decorators/workspace.decorator';
+import { WorkspaceCtx } from './decorators/workspace.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('workspaces')
-@UseGuards(JwtAuthGuard)
-// REST controller điều phối toàn bộ workspace CRUD endpoints
+// Tất cả route bắt đầu bằng /api/v1/workspaces
+// JwtAuthGuard đã global (Phase 1) nên không cần UseGuards ở đây
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
-  // POST /workspaces -> tạo workspace mới cho user hiện tại
+  // ── POST /workspaces — Tạo workspace mới ──
   @Post()
-  async createWorkspace(@CurrentUser('id') userId: string, @Body() dto: CreateWorkspaceDto) {
-    return this.workspaceService.createWorkspace(userId, dto); // Tạo workspace mới + OWNER membership
+  async create(@CurrentUser('id') userId: string, @Body() dto: CreateWorkspaceDto) {
+    return this.workspaceService.createWorkspace(userId, dto);
+    // Tự động tạo OWNER membership cho người tạo
   }
 
-  // GET /workspaces -> liệt kê mọi workspace user tham gia
+  // ── GET /workspaces — Danh sách workspace của tôi ──
   @Get()
-  async listWorkspaces(@CurrentUser('id') userId: string) {
-    return this.workspaceService.listWorkspaces(userId); // Liệt kê mọi workspace user tham gia
+  async list(@CurrentUser('id') userId: string) {
+    return this.workspaceService.listWorkspaces(userId);
+    // Chỉ trả về workspace mà user tham gia (member)
   }
 
-  // GET /workspaces/:workspaceId -> lấy overview + stats
+  // ── GET /workspaces/:workspaceId — Chi tiết workspace ──
   @Get(':workspaceId')
   @UseInterceptors(WorkspaceContextInterceptor)
-  @UseGuards(WorkspaceMemberGuard)
-  async getOverview(@Workspace() workspace) {
-    return this.workspaceService.getOverview(workspace.id); // Overview gồm counts + permissions
+  @UseGuards(WorkspaceMemberGuard)   // Phải là member mới được xem
+  async getOverview(@WorkspaceCtx() ctx) {
+    return this.workspaceService.getOverview(ctx.workspace.id);
   }
 
-  // PATCH /workspaces/:workspaceId -> update name/description
+  // ── PATCH /workspaces/:workspaceId — Đổi tên/mô tả ──
   @Patch(':workspaceId')
   @UseInterceptors(WorkspaceContextInterceptor)
-  @UseGuards(WorkspaceAdminGuard)
-  async updateWorkspace(
-    @Workspace() workspace,
+  @UseGuards(WorkspaceAdminGuard)   // Admin hoặc Owner mới được sửa
+  async update(
+    @WorkspaceCtx() ctx,
     @Body() dto: UpdateWorkspaceDto,
     @CurrentUser('id') actorId: string,
   ) {
-    return this.workspaceService.updateWorkspace(workspace, dto, actorId); // Rename/đổi description
+    return this.workspaceService.updateWorkspace(ctx.workspace, dto, actorId);
   }
 
-  // PATCH /workspaces/:workspaceId/archive -> toggle cờ archived
+  // ── PATCH /workspaces/:workspaceId/archive — Archive/Unarchive ──
   @Patch(':workspaceId/archive')
   @UseInterceptors(WorkspaceContextInterceptor)
-  @UseGuards(WorkspaceOwnerGuard)
-  async toggleArchive(@Workspace() workspace, @Body() dto: ArchiveWorkspaceDto, @CurrentUser('id') actorId: string) {
-    return this.workspaceService.toggleArchive(workspace, dto.archived, actorId); // Soft delete / restore
+  @UseGuards(WorkspaceOwnerGuard)   // Chỉ Owner — đây là quyết định lớn
+  async toggleArchive(
+    @WorkspaceCtx() ctx,
+    @Body() dto: ArchiveWorkspaceDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.workspaceService.toggleArchive(ctx.workspace, dto.archived, actorId);
   }
 
-  // DELETE /workspaces/:workspaceId -> xoá hẳn workspace (đã archived)
+  // ── DELETE /workspaces/:workspaceId — Xóa hẳn ──
   @Delete(':workspaceId')
   @UseInterceptors(WorkspaceContextInterceptor)
   @UseGuards(WorkspaceOwnerGuard)
-  async deleteWorkspace(@Workspace() workspace, @Query('force') force?: string) {
-    return this.workspaceService.deleteWorkspace(workspace, force === 'true'); // Hard delete (phải archived trước)
+  async delete(@WorkspaceCtx() ctx, @Query('force') force?: string) {
+    return this.workspaceService.deleteWorkspace(ctx.workspace, force === 'true');
+    // Phải archive trước + truyền ?force=true mới được xóa
+    // Double confirm — tránh xóa nhầm
   }
 }
 ```
 
-#### 3.4.3 Service
+### 4c. Service
 
-```ts
-// src/workspace/workspace.service.ts
+📁 **File:** `src/workspace/workspace.service.ts`
+
+```typescript
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
@@ -560,161 +602,112 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspacePermissionService } from './services/workspace-permission.service';
 import { ConfigService } from '@nestjs/config';
 import { Workspace } from '@prisma/client';
-import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
-// Service chứa toàn bộ business rule của Workspace CRUD
 export class WorkspaceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: WorkspacePermissionService,
     private readonly config: ConfigService,
-    private readonly activityLog: ActivityLogService,
   ) {}
 
-  // Sinh workspace mới + owner membership trong transaction
+  // Tạo workspace + tự động gán OWNER cho người tạo
   async createWorkspace(userId: string, dto: CreateWorkspaceDto) {
+    // Kiểm tra quota — mỗi user chỉ được tạo tối đa N workspace
     const maxWorkspaces = this.config.get<number>('workspaceLimits.maxWorkspacesPerUser') ?? 50;
-    const workspaceCount = await this.prisma.workspaceMember.count({ where: { userId } }); // (1) kiểm tra quota
-    if (workspaceCount >= maxWorkspaces) {
-      throw new BadRequestException('WORKSPACE_LIMIT_REACHED'); // (2) chặn khi vượt giới hạn
+    const count = await this.prisma.workspaceMember.count({
+      where: { userId, role: 'OWNER' },
+      // Chỉ đếm workspace mà user SỞ HỮU, không phải workspace mà user tham gia
+    });
+    if (count >= maxWorkspaces) {
+      throw new BadRequestException('WORKSPACE_LIMIT_REACHED');
     }
 
-    // (3) bọc vào transaction để tất cả thao tác commit cùng lúc
+    // Transaction: tạo workspace + membership cùng lúc — hoặc cả 2 thành công, hoặc cả 2 rollback
     return this.prisma.$transaction(async (tx) => {
-      const workspace = await tx.workspace.create({ // (4) tạo workspace chính
+      const workspace = await tx.workspace.create({
         data: {
           name: dto.name,
           description: dto.description,
         },
       });
 
-      const ownerMembership = await tx.workspaceMember.create({ // (5) gán OWNER membership cho creator
+      const ownerMembership = await tx.workspaceMember.create({
         data: {
           workspaceId: workspace.id,
           userId,
-          role: 'OWNER',
+          role: 'OWNER',   // Người tạo = chủ sở hữu
         },
-      });
-
-      // (6) ghi lại activity log phục vụ audit
-      await this.activityLog.logWorkspaceAction({
-        workspaceId: workspace.id,
-        actorId: userId,
-        action: 'WORKSPACE_CREATED',
-        entityId: workspace.id,
-        entityType: 'Workspace',
-        metadata: { name: workspace.name },
       });
 
       return { workspace, membership: ownerMembership };
     });
   }
 
-  // Trả về danh sách workspace user đã tham gia để render dashboard
+  // Liệt kê tất cả workspace mà user tham gia
   async listWorkspaces(userId: string) {
-    // (1) join workspace để FE có đủ dữ liệu card
     return this.prisma.workspaceMember.findMany({
       where: { userId },
-      include: {
-        workspace: true,
-      },
+      include: { workspace: true },   // Kéo luôn thông tin workspace
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  // Tổng hợp overview cho 1 workspace (metadata + stats)
+  // Overview cho 1 workspace — metadata + số lượng member/invite
   async getOverview(workspaceId: string) {
-    // (1) chạy song song truy vấn workspace + stats count
-    const [workspace, stats] = await Promise.all([
-      this.prisma.workspace.findUnique({ where: { id: workspaceId } }),
-      this.prisma.workspace.aggregate({
-        where: { id: workspaceId },
-        _count: { members: true, invites: { where: { status: 'PENDING' } } },
-      }),
-    ]);
-
-    return { workspace, stats };
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        _count: {
+          select: {
+            members: true,
+            invites: true,
+          },
+        },
+      },
+    });
+    return workspace;
   }
 
-  // Update name/description rồi log event rename
+  // Cập nhật tên/mô tả
   async updateWorkspace(workspace: Workspace, dto: UpdateWorkspaceDto, actorId: string) {
-    // (1) chỉ patch các field có trong payload để tránh overwrite
-    const updated = await this.prisma.workspace.update({
+    this.permissionService.assertActive(workspace);
+    // Workspace đã archived → không cho sửa gì nữa
+
+    return this.prisma.workspace.update({
       where: { id: workspace.id },
       data: {
         ...(dto.name ? { name: dto.name } : {}),
-        ...(dto.description ? { description: dto.description } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        // Spread conditional — chỉ update field nào client gửi lên
       },
     });
-
-    // (2) log lại rename event cho audit trail
-    await this.activityLog.logWorkspaceAction({
-      workspaceId: workspace.id,
-      actorId,
-      action: 'WORKSPACE_RENAMED',
-      entityId: workspace.id,
-      entityType: 'Workspace',
-      metadata: { name: updated.name },
-    });
-
-    return updated;
   }
 
-  // Bật/tắt archived flag cho workspace
+  // Bật/tắt archived
   async toggleArchive(workspace: Workspace, archived: boolean, actorId: string) {
-    const updated = await this.prisma.workspace.update({
+    return this.prisma.workspace.update({
       where: { id: workspace.id },
       data: { archived },
     });
-
-    // (1) log chung cho cả archive/unarchive với metadata archived
-    await this.activityLog.logWorkspaceAction({
-      workspaceId: workspace.id,
-      actorId,
-      action: 'WORKSPACE_ARCHIVED',
-      entityId: workspace.id,
-      entityType: 'Workspace',
-      metadata: { archived },
-    });
-
-    return updated;
   }
 
-  // Hard delete workspace sau khi đã archive + xác nhận force
+  // Xóa hẳn — phải archived trước + force = true
   async deleteWorkspace(workspace: Workspace, force: boolean) {
-    // (1) double check workspace đã archive và client truyền force
     if (!workspace.archived || !force) {
       throw new BadRequestException('ARCHIVE_REQUIRED_BEFORE_DELETE');
+      // "Bạn có chắc không?" — double confirm bằng cách bắt archive trước
     }
 
-    // (2) bọc trong transaction vì gồm nhiều thao tác xoá
     await this.prisma.$transaction(async (tx) => {
-      const invites = await tx.workspaceInvite.findMany({ // (3) fetch pending invite để revoke và log sau
-        where: { workspaceId: workspace.id, status: 'PENDING' },
-      });
-
-      // (4) revoke toàn bộ invite pending trước khi xoá workspace
+      // Revoke mọi invite pending trước khi xóa
       await tx.workspaceInvite.updateMany({
         where: { workspaceId: workspace.id, status: 'PENDING' },
         data: { status: 'REVOKED', revokedAt: new Date() },
       });
 
-      await tx.workspace.delete({ where: { id: workspace.id } }); // (5) xoá workspace chính
-
-      // (6) log revoke invite ngoài transaction để không kéo dài lock
-      await Promise.all(
-        invites.map((invite) =>
-          this.activityLog.logWorkspaceAction({
-            workspaceId: workspace.id,
-            actorId: workspace.id,
-            action: 'INVITE_REVOKED',
-            entityType: 'WorkspaceInvite',
-            entityId: invite.id,
-            metadata: { email: invite.email },
-          }),
-        ),
-      );
+      await tx.workspace.delete({ where: { id: workspace.id } });
+      // Cascade delete sẽ xóa members + invites nếu schema có onDelete: Cascade
     });
 
     return { deleted: true };
@@ -722,282 +715,228 @@ export class WorkspaceService {
 }
 ```
 
-#### 3.4.4 Response types (optional but giúp FE)
+---
 
-```ts
-// src/workspace/types/workspace.dto.ts
-// DTO trả về cho FE khi render danh sách workspace
-export interface WorkspaceSummaryDto {
-  id: string;
-  name: string;
-  description?: string | null;
-  archived: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
+## Bước 5: Member Management — Ai vào, ai ra, ai làm sếp? 👥
 
-### 3.5 Step 5. Member management module
+### Tại sao?
 
-#### 3.5.1 DTOs
+Workspace không có chỉ mình ta — cần mời bạn bè vào, phân quyền cho họ, và đôi khi... đuổi họ ra. Phần này xử lý CRUD thành viên + ownership transfer.
 
-```ts
-// src/workspace/member/dto/add-member.dto.ts
+### 5a. DTOs
+
+📁 **File:** `src/workspace/member/dto/add-member.dto.ts`
+
+```typescript
 import { IsOptional, IsUUID, IsEnum } from 'class-validator';
 import { WorkspaceRole } from '@prisma/client';
 
-// Yêu cầu thêm thành viên mới vào workspace
 export class AddMemberDto {
   @IsUUID()
-  userId!: string;
+  userId!: string;        // ID người muốn thêm
 
   @IsOptional()
   @IsEnum(WorkspaceRole)
-  role?: WorkspaceRole;
+  role?: WorkspaceRole;   // Mặc định MEMBER — không thể assign OWNER trực tiếp
 }
 ```
 
-```ts
-// src/workspace/member/dto/update-member-role.dto.ts
+📁 **File:** `src/workspace/member/dto/update-member-role.dto.ts`
+
+```typescript
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { WorkspaceRole } from '@prisma/client';
 
-// Đổi role của một thành viên cụ thể
 export class UpdateMemberRoleDto {
   @IsEnum(WorkspaceRole)
-  role!: WorkspaceRole;
+  role!: WorkspaceRole;                 // Role mới
 
   @IsOptional()
   @IsUUID()
-  transferOwnerTo?: string;
+  transferOwnerTo?: string;            // Chuyển quyền Owner cho ai? (chỉ khi promote ai đó thành Owner)
 }
 ```
 
-```ts
-// src/workspace/member/dto/remove-member.dto.ts
-import { IsOptional, IsUUID } from 'class-validator';
+### 5b. Controller
 
-// Xoá thành viên, optional transfer owner sang người khác
-export class RemoveMemberDto {
-  @IsOptional()
-  @IsUUID()
-  transferOwnerTo?: string;
-}
-```
+📁 **File:** `src/workspace/member/workspace-member.controller.ts`
 
-#### 3.5.2 Controller
-
-```ts
-// src/workspace/member/workspace-member.controller.ts
+```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { WorkspaceMemberService } from './workspace-member.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { WorkspaceContextInterceptor } from '../interceptors/workspace-context.interceptor';
 import { WorkspaceAdminGuard } from '../guards/workspace-admin.guard';
-import { WorkspaceOwnerGuard } from '../guards/workspace-owner.guard';
-import { Workspace } from '../decorators/workspace.decorator';
-import { AddMemberDto } from './dto/add-member.dto.ts';
+import { WorkspaceCtx } from '../decorators/workspace.decorator';
+import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
-import { RemoveMemberDto } from './dto/remove-member.dto';
 
 @Controller('workspaces/:workspaceId/members')
-@UseGuards(JwtAuthGuard)
 @UseInterceptors(WorkspaceContextInterceptor)
-// Controller handle listing/add/update/remove thành viên
+// Mọi route cần :workspaceId → interceptor tự resolve context
 export class WorkspaceMemberController {
   constructor(private readonly memberService: WorkspaceMemberService) {}
 
-  // GET -> phân trang danh sách member (ADMIN trở lên)
+  // GET — Danh sách thành viên (có phân trang)
   @Get()
   @UseGuards(WorkspaceAdminGuard)
-  async listMembers(@Workspace() workspace, @Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.memberService.listMembers(workspace.id, Number(page), Number(limit));
+  async list(@WorkspaceCtx() ctx, @Query('page') page = 1, @Query('limit') limit = 20) {
+    return this.memberService.listMembers(ctx.workspace.id, Number(page), Number(limit));
   }
 
-  // POST -> thêm thành viên mới dựa trên userId
+  // POST — Thêm thành viên mới
   @Post()
   @UseGuards(WorkspaceAdminGuard)
-  async addMember(@Workspace() workspace, @Body() dto: AddMemberDto) {
-    return this.memberService.addMember(workspace, dto);
+  async add(@WorkspaceCtx() ctx, @Body() dto: AddMemberDto) {
+    return this.memberService.addMember(ctx.workspace, dto);
   }
 
-  // PATCH -> đổi role của member cụ thể
+  // PATCH — Đổi role
   @Patch(':memberId/role')
   @UseGuards(WorkspaceAdminGuard)
-  async updateRole(@Workspace() workspace, @Param('memberId') memberId: string, @Body() dto: UpdateMemberRoleDto) {
-    return this.memberService.updateRole(workspace, memberId, dto);
+  async updateRole(@WorkspaceCtx() ctx, @Param('memberId') memberId: string, @Body() dto: UpdateMemberRoleDto) {
+    return this.memberService.updateRole(ctx.workspace, memberId, dto);
   }
 
-  // DELETE -> xoá member, optional transfer owner
+  // DELETE — Đuổi thành viên
   @Delete(':memberId')
   @UseGuards(WorkspaceAdminGuard)
-  async removeMember(
-    @Workspace() workspace,
-    @Param('memberId') memberId: string,
-    @Body() dto: RemoveMemberDto,
-  ) {
-    return this.memberService.removeMember(workspace, memberId, dto);
+  async remove(@WorkspaceCtx() ctx, @Param('memberId') memberId: string) {
+    return this.memberService.removeMember(ctx.workspace, memberId);
   }
 }
 ```
 
-#### 3.5.3 Service (logic chính)
+### 5c. Service
 
-```ts
-// src/workspace/member/workspace-member.service.ts
+📁 **File:** `src/workspace/member/workspace-member.service.ts`
+
+```typescript
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacePermissionService } from '../services/workspace-permission.service';
 import { ConfigService } from '@nestjs/config';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
-import { RemoveMemberDto } from './dto/remove-member.dto';
 import { Workspace } from '@prisma/client';
-import { ActivityLogService } from '../../activity-log/activity-log.service';
 
 @Injectable()
-// Đóng gói toàn bộ nghiệp vụ quản lý thành viên
 export class WorkspaceMemberService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: WorkspacePermissionService,
     private readonly config: ConfigService,
-    private readonly activityLog: ActivityLogService,
   ) {}
 
-  // Liệt kê thành viên trong workspace với paginate đơn giản
+  // Danh sách member + phân trang
   async listMembers(workspaceId: string, page: number, limit: number) {
     const [items, total] = await Promise.all([
       this.prisma.workspaceMember.findMany({
         where: { workspaceId },
-        skip: (page - 1) * limit, // (1) offset
-        take: limit, // (2) limit
-        include: { user: true }, // (3) eager load user profile
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { user: true },   // Eager load thông tin user (name, email, avatar)
       }),
-      this.prisma.workspaceMember.count({ where: { workspaceId } }), // (4) total để FE render pagination
+      this.prisma.workspaceMember.count({ where: { workspaceId } }),
     ]);
     return { items, total, page, limit };
   }
 
-  // Thêm thành viên mới sau khi check limit & duplicate
+  // Thêm thành viên — check limit + duplicate
   async addMember(workspace: Workspace, dto: AddMemberDto) {
-    this.permissionService.assertActive(workspace); // (1) không cho invite khi archived
+    this.permissionService.assertActive(workspace);
+
+    // Check limit
     const maxMembers = this.config.get<number>('workspaceLimits.maxMembersPerWorkspace') ?? 200;
-    const memberCount = await this.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } });
-    if (memberCount >= maxMembers) {
-      throw new BadRequestException('MEMBER_LIMIT_REACHED'); // (2) enforce limit từ config
+    const count = await this.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } });
+    if (count >= maxMembers) {
+      throw new BadRequestException('MEMBER_LIMIT_REACHED');
     }
 
+    // Check đã là member chưa
     const existing = await this.prisma.workspaceMember.findFirst({
       where: { workspaceId: workspace.id, userId: dto.userId },
     });
     if (existing) {
-      throw new BadRequestException('MEMBER_ALREADY_EXISTS'); // (3) tránh duplicate
+      throw new BadRequestException('MEMBER_ALREADY_EXISTS');
     }
 
-    const role = dto.role === 'OWNER' ? 'ADMIN' : dto.role ?? 'MEMBER'; // (4) không thể assign OWNER trực tiếp
-    const member = await this.prisma.workspaceMember.create({
-      data: {
-        workspaceId: workspace.id,
-        userId: dto.userId,
-        role,
-      },
+    // Không cho assign OWNER trực tiếp — phải qua flow transfer
+    const role = dto.role === 'OWNER' ? 'ADMIN' : dto.role ?? 'MEMBER';
+
+    return this.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: dto.userId, role },
       include: { user: true },
     });
-
-    await this.activityLog.logWorkspaceAction({ // (5) log thêm member mới
-      workspaceId: workspace.id,
-      actorId: workspace.id,
-      action: 'MEMBER_ADDED',
-      entityType: 'WorkspaceMember',
-      entityId: member.id,
-      metadata: { role: member.role },
-    });
-
-    return member;
   }
 
-  // Cập nhật role hoặc chuyển quyền owner cho thành viên khác
+  // Đổi role — bao gồm logic chuyển quyền Owner
   async updateRole(workspace: Workspace, memberId: string, dto: UpdateMemberRoleDto) {
-    this.permissionService.assertActive(workspace); // (1) không thể chỉnh role khi archived
-    const member = await this.prisma.workspaceMember.findUnique({ where: { id: memberId } });
-    if (!member || member.workspaceId !== workspace.id) {
-      throw new NotFoundException('MEMBER_NOT_FOUND'); // (2) validate scope
-    }
+    this.permissionService.assertActive(workspace);
 
-    this.permissionService.assertRoleTransition(member.role, dto.role, !!dto.transferOwnerTo); // (3) guard logic chuyển chủ
-
-    if (dto.role === 'OWNER') {
-      const target = await this.prisma.workspaceMember.findUnique({ where: { id: dto.transferOwnerTo! } });
-      if (!target || target.workspaceId !== workspace.id) {
-        throw new BadRequestException('INVALID_TRANSFER_TARGET'); // (4) owner phải chuyển cho người cùng workspace
-      }
-
-      await this.prisma.$transaction(async (tx) => {
-        await tx.workspaceMember.update({ // (5) promote target thành OWNER
-          where: { id: target.id },
-          data: { role: 'OWNER' },
-        });
-        await tx.workspaceMember.update({ // (6) hạ owner cũ xuống ADMIN
-          where: { id: member.id },
-          data: { role: 'ADMIN' },
-        });
-      });
-    } else {
-      await this.prisma.workspaceMember.update({
-        where: { id: member.id },
-        data: { role: dto.role }, // (7) role thường update trực tiếp
-      });
-    }
-
-    await this.activityLog.logWorkspaceAction({ // (8) log thay đổi quyền
-      workspaceId: workspace.id,
-      actorId: workspace.id,
-      action: 'MEMBER_ROLE_CHANGED',
-      entityType: 'WorkspaceMember',
-      entityId: member.id,
-      metadata: { role: dto.role },
-    });
-
-    return { updated: true };
-  }
-
-  // Xoá thành viên; nếu là owner cần chuyển quyền trước
-  async removeMember(workspace: Workspace, memberId: string, dto: RemoveMemberDto) {
     const member = await this.prisma.workspaceMember.findUnique({ where: { id: memberId } });
     if (!member || member.workspaceId !== workspace.id) {
       throw new NotFoundException('MEMBER_NOT_FOUND');
     }
 
-    if (member.role === 'OWNER' && !dto.transferOwnerTo) {
-      throw new BadRequestException('TRANSFER_REQUIRED'); // (1) owner muốn rời phải chuyển quyền
+    // Guard logic chuyển quyền
+    this.permissionService.assertRoleTransition(member.role, dto.role, !!dto.transferOwnerTo);
+
+    // Nếu promote thành OWNER → transaction: promote target + hạ owner cũ
+    if (dto.role === 'OWNER' && dto.transferOwnerTo) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.workspaceMember.update({
+          where: { id: dto.transferOwnerTo! },
+          data: { role: 'OWNER' },
+        });
+        await tx.workspaceMember.update({
+          where: { id: member.id },
+          data: { role: 'ADMIN' },   // Owner cũ tự động xuống ADMIN
+        });
+      });
+    } else {
+      await this.prisma.workspaceMember.update({
+        where: { id: member.id },
+        data: { role: dto.role },
+      });
     }
 
-    await this.prisma.workspaceMember.delete({ where: { id: memberId } }); // (2) xoá membership
+    return { updated: true };
+  }
 
-    await this.activityLog.logWorkspaceAction({ // (3) log member bị remove
-      workspaceId: workspace.id,
-      actorId: workspace.id,
-      action: 'MEMBER_REMOVED',
-      entityType: 'WorkspaceMember',
-      entityId: memberId,
-    });
+  // Đuổi thành viên — owner không được tự đuổi mình
+  async removeMember(workspace: Workspace, memberId: string) {
+    const member = await this.prisma.workspaceMember.findUnique({ where: { id: memberId } });
+    if (!member || member.workspaceId !== workspace.id) {
+      throw new NotFoundException('MEMBER_NOT_FOUND');
+    }
 
+    if (member.role === 'OWNER') {
+      throw new BadRequestException('CANNOT_REMOVE_OWNER');
+      // Owner muốn rời → phải chuyển quyền trước
+    }
+
+    await this.prisma.workspaceMember.delete({ where: { id: memberId } });
     return { removed: true };
   }
 }
 ```
 
-### 3.6 Step 6. Invitation lifecycle module
+---
 
-#### 3.6.1 DTOs
+## Bước 6: Invitation Lifecycle — Mời, nhận, từ chối 💌
 
-```ts
-// src/workspace/invite/dto/create-invites.dto.ts
+### Tại sao?
+
+Không phải lúc nào ta cũng biết userId của người muốn mời — nhiều khi chỉ biết email. Flow invite giải quyết điều này: tạo token → gửi link → người nhận click accept → tự động join workspace.
+
+### 6a. DTOs
+
+📁 **File:** `src/workspace/invite/dto/create-invites.dto.ts`
+
+```typescript
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsEnum, IsOptional } from 'class-validator';
 import { WorkspaceRole } from '@prisma/client';
 
-// Một dòng invite gồm email + role kỳ vọng
 class InviteEntryDto {
   @IsEmail()
   email!: string;
@@ -1008,97 +947,77 @@ class InviteEntryDto {
 }
 
 export class CreateInvitesDto {
-  // DTO bulk invite nhiều email cùng lúc
   @IsArray({ message: 'invites must be an array' })
-  @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMinSize(1)     // Ít nhất 1 người
+  @ArrayMaxSize(20)    // Tối đa 20 để tránh spam
   invites!: InviteEntryDto[];
 }
+// Bulk invite — gửi 1 request, mời nhiều người cùng lúc
 ```
 
-```ts
-// src/workspace/invite/dto/invite-token.dto.ts
-import { IsString, Length } from 'class-validator';
+### 6b. Controller
 
-// Token DTO dùng cho accept/reject invite API
-export class InviteTokenParamDto {
-  @IsString()
-  @Length(10, 100)
-  token!: string;
-}
-```
+📁 **File:** `src/workspace/invite/workspace-invite.controller.ts`
 
-#### 3.6.2 Controller
-
-```ts
-// src/workspace/invite/workspace-invite.controller.ts
+```typescript
 import { Body, Controller, Delete, Get, Param, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { WorkspaceInviteService } from './workspace-invite.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { WorkspaceContextInterceptor } from '../interceptors/workspace-context.interceptor';
 import { WorkspaceAdminGuard } from '../guards/workspace-admin.guard';
-import { Workspace } from '../decorators/workspace.decorator';
+import { WorkspaceCtx } from '../decorators/workspace.decorator';
 import { CreateInvitesDto } from './dto/create-invites.dto';
-import { WorkspaceInviteParamDto } from './dto/invite-token.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 
+// ═══ Controller 1: Admin quản lý invite ═══
 @Controller('workspaces/:workspaceId/invites')
-@UseGuards(JwtAuthGuard)
 @UseInterceptors(WorkspaceContextInterceptor)
-// Controller xử lý bulk invite + admin flows
 export class WorkspaceInviteController {
   constructor(private readonly inviteService: WorkspaceInviteService) {}
 
-  // POST -> tạo batch invites mới (ADMIN trở lên)
   @Post()
   @UseGuards(WorkspaceAdminGuard)
-  async createInvites(@Workspace() workspace, @Body() dto: CreateInvitesDto, @CurrentUser('id') actorId: string) {
-    return this.inviteService.createInvites(workspace, dto, actorId);
+  async create(@WorkspaceCtx() ctx, @Body() dto: CreateInvitesDto, @CurrentUser('id') actorId: string) {
+    return this.inviteService.createInvites(ctx.workspace, dto, actorId);
   }
 
-  // GET -> list tất cả invite hiện có
   @Get()
   @UseGuards(WorkspaceAdminGuard)
-  async listInvites(@Workspace() workspace) {
-    return this.inviteService.listInvites(workspace.id);
+  async list(@WorkspaceCtx() ctx) {
+    return this.inviteService.listInvites(ctx.workspace.id);
   }
 
-  // DELETE -> revoke 1 invite cụ thể
   @Delete(':inviteId')
   @UseGuards(WorkspaceAdminGuard)
-  async revokeInvite(@Workspace() workspace, @Param('inviteId') inviteId: string, @CurrentUser('id') actorId: string) {
-    return this.inviteService.revokeInvite(workspace, inviteId, actorId);
+  async revoke(@WorkspaceCtx() ctx, @Param('inviteId') inviteId: string, @CurrentUser('id') actorId: string) {
+    return this.inviteService.revokeInvite(ctx.workspace, inviteId, actorId);
   }
 }
 
+// ═══ Controller 2: Người được mời accept/reject ═══
 @Controller('workspace-invites')
-// Public-ish controller để accept/reject invite token
 export class WorkspaceInviteTokenController {
   constructor(private readonly inviteService: WorkspaceInviteService) {}
 
-  @Public()
-  @UseGuards(JwtAuthGuard)
-  // POST /workspace-invites/:token/accept -> join workspace
+  // Accept invite — cần login (để biết ai accept)
   @Post(':token/accept')
-  async acceptInvite(@Param() params: InviteTokenParamDto, @CurrentUser() user) {
-    return this.inviteService.acceptInvite(params.token, user);
+  async accept(@Param('token') token: string, @CurrentUser() user) {
+    return this.inviteService.acceptInvite(token, user);
   }
 
-  @Public()
-  @UseGuards(JwtAuthGuard)
-  // POST /workspace-invites/:token/reject -> từ chối invite
+  // Reject invite
   @Post(':token/reject')
-  async rejectInvite(@Param() params: InviteTokenParamDto, @CurrentUser() user) {
-    return this.inviteService.rejectInvite(params.token, user);
+  async reject(@Param('token') token: string, @CurrentUser() user) {
+    return this.inviteService.rejectInvite(token, user);
   }
 }
 ```
 
-#### 3.6.3 Service
+### 6c. Service
 
-```ts
-// src/workspace/invite/workspace-invite.service.ts
+📁 **File:** `src/workspace/invite/workspace-invite.service.ts`
+
+```typescript
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacePermissionService } from '../services/workspace-permission.service';
@@ -1106,77 +1025,71 @@ import { CreateInvitesDto } from './dto/create-invites.dto';
 import { Workspace } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuid } from 'uuid';
-import { ActivityLogService } from '../../activity-log/activity-log.service';
 
 @Injectable()
-// Service quản lý lifecycle của workspace invite
 export class WorkspaceInviteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: WorkspacePermissionService,
     private readonly config: ConfigService,
-    private readonly activityLog: ActivityLogService,
   ) {}
 
-  // Bulk tạo invite: dedupe, skip member đã tồn tại, sinh token + expiry
+  // Bulk create invites — dedupe email, skip member đã join, skip invite pending
   async createInvites(workspace: Workspace, dto: CreateInvitesDto, actorId: string) {
-    this.permissionService.assertActive(workspace); // (1) không mời vào workspace archived
+    this.permissionService.assertActive(workspace);
 
     const inviteExpiryDays = this.config.get<number>('workspaceLimits.inviteExpiryDays') ?? 7;
-    const expiresAt = () => new Date(Date.now() + inviteExpiryDays * 24 * 60 * 60 * 1000); // (2) helper churn thời hạn
+    const expiresAt = () => new Date(Date.now() + inviteExpiryDays * 24 * 60 * 60 * 1000);
 
-    const payloadDedup = Array.from(new Map(dto.invites.map((entry) => [entry.email.toLowerCase(), entry])).values());
-    // (3) dedupe email theo lowercase để tránh gửi trùng
+    // Dedupe email: nếu client gửi trùng email → chỉ giữ 1
+    const deduped = Array.from(
+      new Map(dto.invites.map((e) => [e.email.toLowerCase(), e])).values(),
+    );
 
+    // Bỏ qua user đã là member
     const existingMembers = await this.prisma.workspaceMember.findMany({
-      where: { workspaceId: workspace.id, user: { email: { in: payloadDedup.map((i) => i.email) } } },
+      where: {
+        workspaceId: workspace.id,
+        user: { email: { in: deduped.map((i) => i.email) } },
+      },
       include: { user: true },
     });
 
+    // Bỏ qua email đã có invite pending chưa hết hạn
     const activeInvites = await this.prisma.workspaceInvite.findMany({
       where: {
         workspaceId: workspace.id,
-        email: { in: payloadDedup.map((i) => i.email) },
+        email: { in: deduped.map((i) => i.email) },
         status: 'PENDING',
         expiresAt: { gt: new Date() },
       },
     });
 
     const skipped = new Set<string>();
-    existingMembers.forEach((member) => skipped.add(member.user.email)); // (4) bỏ qua user đã join
-    activeInvites.forEach((invite) => skipped.add(invite.email)); // (5) bỏ qua invite pending
+    existingMembers.forEach((m) => skipped.add(m.user.email));
+    activeInvites.forEach((i) => skipped.add(i.email));
 
-    const toCreate = payloadDedup.filter((entry) => !skipped.has(entry.email)); // (6) danh sách thực sự cần tạo
+    const toCreate = deduped.filter((entry) => !skipped.has(entry.email));
 
+    // Tạo invite records
     const created = await this.prisma.workspaceInvite.createManyAndReturn({
       data: toCreate.map((entry) => ({
         workspaceId: workspace.id,
         email: entry.email,
         role: entry.role === 'OWNER' ? 'ADMIN' : entry.role ?? 'MEMBER',
+        // Không cho mời làm OWNER — chỉ ADMIN hoặc MEMBER
         status: 'PENDING',
         token: uuid(),
-        expiresAt: expiresAt(), // (7) token expiry
-        invitedById: actorId, // (8) trace người mời
+        expiresAt: expiresAt(),
+        invitedByMemberId: actorId,
       })),
     });
 
-    await Promise.all(
-      created.map((invite) =>
-        this.activityLog.logWorkspaceAction({
-          workspaceId: workspace.id,
-          actorId,
-          action: 'INVITE_SENT',
-          entityType: 'WorkspaceInvite',
-          entityId: invite.id,
-          metadata: { email: invite.email },
-        }),
-      ),
-    );
-
     return { created, skipped: Array.from(skipped) };
+    // Trả về cả danh sách bị skip — cho client biết email nào đã tồn tại
   }
 
-  // Liệt kê invite trong workspace, dùng cho dashboard quản trị
+  // Liệt kê invite (cho admin dashboard)
   async listInvites(workspaceId: string) {
     return this.prisma.workspaceInvite.findMany({
       where: { workspaceId },
@@ -1184,55 +1097,43 @@ export class WorkspaceInviteService {
     });
   }
 
-  // Revoke invite cụ thể và log activity
+  // Revoke invite
   async revokeInvite(workspace: Workspace, inviteId: string, actorId: string) {
     const invite = await this.prisma.workspaceInvite.findUnique({ where: { id: inviteId } });
     if (!invite || invite.workspaceId !== workspace.id) {
-      throw new NotFoundException('INVITE_NOT_FOUND'); // (1) invite không thuộc workspace này
-    }
-
-    await this.prisma.workspaceInvite.update({
-      where: { id: inviteId },
-      data: { status: 'REVOKED', revokedAt: new Date() }, // (2) đánh dấu revoke + timestamp
-    });
-
-    await this.activityLog.logWorkspaceAction({ // (3) ghi log để audit
-      workspaceId: workspace.id,
-      actorId,
-      action: 'INVITE_REVOKED',
-      entityType: 'WorkspaceInvite',
-      entityId: invite.id,
-      metadata: { email: invite.email },
-    });
-
-    return { revoked: true };
-  }
-
-  // Accept invite token -> thêm member nếu chưa có và đánh dấu ACCEPTED
-  async acceptInvite(token: string, user: { id: string; email: string }) {
-    const invite = await this.prisma.workspaceInvite.findUnique({ where: { token } });
-    if (!invite) {
       throw new NotFoundException('INVITE_NOT_FOUND');
     }
+
+    return this.prisma.workspaceInvite.update({
+      where: { id: inviteId },
+      data: { status: 'REVOKED', revokedAt: new Date() },
+    });
+  }
+
+  // Accept invite — join workspace
+  async acceptInvite(token: string, user: { id: string; email: string }) {
+    const invite = await this.prisma.workspaceInvite.findUnique({ where: { token } });
+    if (!invite) throw new NotFoundException('INVITE_NOT_FOUND');
+
     if (invite.status !== 'PENDING' || invite.expiresAt < new Date()) {
-      throw new BadRequestException('INVITE_EXPIRED'); // (1) token hết hạn hoặc ko pending
+      throw new BadRequestException('INVITE_EXPIRED');
     }
     if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
-      throw new BadRequestException('INVITE_EMAIL_MISMATCH'); // (2) email mismatched -> chặn
+      throw new BadRequestException('INVITE_EMAIL_MISMATCH');
+      // Invite gửi cho alice@mail.com mà bob@mail.com accept → chặn
     }
 
     const workspace = await this.prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
-    if (!workspace) {
-      throw new NotFoundException('WORKSPACE_NOT_FOUND');
-    }
-    this.permissionService.assertActive(workspace); // (3) không cho join workspace archived
+    if (!workspace) throw new NotFoundException('WORKSPACE_NOT_FOUND');
+    this.permissionService.assertActive(workspace);
 
-    const existingMember = await this.prisma.workspaceMember.findFirst({
-      where: { workspaceId: workspace.id, userId: user.id },
-    });
-
+    // Transaction: tạo membership + mark invite accepted
     await this.prisma.$transaction(async (tx) => {
-      if (!existingMember) {
+      const existing = await tx.workspaceMember.findFirst({
+        where: { workspaceId: workspace.id, userId: user.id },
+      });
+
+      if (!existing) {
         await tx.workspaceMember.create({
           data: {
             workspaceId: workspace.id,
@@ -1244,42 +1145,25 @@ export class WorkspaceInviteService {
 
       await tx.workspaceInvite.update({
         where: { id: invite.id },
-        data: { status: 'ACCEPTED', acceptedAt: new Date() }, // (4) mark accepted
+        data: { status: 'ACCEPTED', acceptedAt: new Date() },
       });
-    });
-
-    await this.activityLog.logWorkspaceAction({ // (5) log accepted event
-      workspaceId: workspace.id,
-      actorId: user.id,
-      action: 'INVITE_ACCEPTED',
-      entityType: 'WorkspaceInvite',
-      entityId: invite.id,
     });
 
     return { accepted: true };
   }
 
-  // Reject invite token -> mark revoked để ẩn khỏi queue
+  // Reject invite — đơn giản mark REVOKED
   async rejectInvite(token: string, user: { id: string; email: string }) {
     const invite = await this.prisma.workspaceInvite.findUnique({ where: { token } });
-    if (!invite) {
-      throw new NotFoundException('INVITE_NOT_FOUND');
-    }
+    if (!invite) throw new NotFoundException('INVITE_NOT_FOUND');
+
     if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
       throw new BadRequestException('INVITE_EMAIL_MISMATCH');
     }
 
     await this.prisma.workspaceInvite.update({
       where: { id: invite.id },
-      data: { status: 'REVOKED', revokedAt: new Date() }, // (1) mark rejected
-    });
-
-    await this.activityLog.logWorkspaceAction({ // (2) log rejection để trace user từ chối
-      workspaceId: invite.workspaceId,
-      actorId: user.id,
-      action: 'INVITE_REVOKED',
-      entityType: 'WorkspaceInvite',
-      entityId: invite.id,
+      data: { status: 'REVOKED', revokedAt: new Date() },
     });
 
     return { rejected: true };
@@ -1287,158 +1171,66 @@ export class WorkspaceInviteService {
 }
 ```
 
-### 3.7 Step 7. Activity log & domain events
+---
 
-```ts
-// src/activity-log/activity-log.service.ts
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+## Bước 7: Test 🧪
 
-interface LogWorkspaceActionPayload {
-  workspaceId: string;
-  actorId: string;
-  action:
-    | 'WORKSPACE_CREATED'
-    | 'WORKSPACE_RENAMED'
-    | 'WORKSPACE_ARCHIVED'
-    | 'WORKSPACE_DELETED'
-    | 'MEMBER_ADDED'
-    | 'MEMBER_ROLE_CHANGED'
-    | 'MEMBER_REMOVED'
-    | 'INVITE_SENT'
-    | 'INVITE_ACCEPTED'
-    | 'INVITE_REVOKED';
-  entityType: string;
-  entityId: string;
-  metadata?: Record<string, unknown>;
-}
+### Hành động
 
-@Injectable()
-// Wrap Prisma để ghi log hoạt động cho workspace
-export class ActivityLogService {
-  constructor(private readonly prisma: PrismaService) {}
+1. Chạy `npm run start:dev`
+2. Import collection vào Hoppscotch (hoặc dùng Swagger tại `/api-docs`)
 
-  // Tạo 1 bản ghi log, metadata lưu JSON
-  async logWorkspaceAction(payload: LogWorkspaceActionPayload) {
-    await this.prisma.activityLog.create({
-      data: {
-        workspaceId: payload.workspaceId,
-        actorId: payload.actorId,
-        action: payload.action, // Enum mô tả hành động
-        entityType: payload.entityType,
-        entityId: payload.entityId,
-        metadata: payload.metadata ?? {},
-      },
-    });
-  }
-}
-```
+### Test thứ tự
 
-- Tuỳ nhu cầu, emit thêm events qua `EventEmitter2` trong mỗi phương thức (vd `this.eventEmitter.emit('workspace.member.added', {...})`).
+**Test 1: Tạo workspace**
+- Login → lấy token
+- `POST /api/v1/workspaces` — body: `{ "name": "Dự án CCNLTHD", "description": "TodoList Collaboration" }`
+- Kỳ vọng: 201 + workspace + membership (role = OWNER)
 
-### 3.8 Step 8. Testing playbook
+**Test 2: List workspaces**
+- `GET /api/v1/workspaces`
+- Kỳ vọng: 200 + mảng chứa workspace vừa tạo
 
-#### 3.8.1 Unit test sample
+**Test 3: Invite member**
+- `POST /api/v1/workspaces/:id/invites` — body: `{ "invites": [{ "email": "friend@mail.com" }] }`
+- Kỳ vọng: 201 + created array + skipped array
 
-```ts
-// src/workspace/member/__tests__/workspace-member.service.spec.ts
-import { Test } from '@nestjs/testing';
-import { WorkspaceMemberService } from '../workspace-member.service';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { WorkspacePermissionService } from '../../services/workspace-permission.service';
-import { ConfigService } from '@nestjs/config';
+**Test 4: Accept invite**
+- Login bằng `friend@mail.com`
+- `POST /api/v1/workspace-invites/:token/accept`
+- Kỳ vọng: 200 + `{ accepted: true }`
 
-// Mẫu unit test cho WorkspaceMemberService
-describe('WorkspaceMemberService', () => {
-  let service: WorkspaceMemberService;
-  let prisma: jest.Mocked<PrismaService>;
-
-  // Setup module cho mỗi test case
-  beforeEach(async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        WorkspaceMemberService,
-        WorkspacePermissionService,
-        { provide: PrismaService, useValue: { workspaceMember: { count: jest.fn(), create: jest.fn() } } },
-        { provide: ConfigService, useValue: { get: () => 200 } },
-        { provide: 'ActivityLogService', useValue: { logWorkspaceAction: jest.fn() } },
-      ],
-    }).compile();
-
-    service = moduleRef.get(WorkspaceMemberService);
-    prisma = moduleRef.get(PrismaService);
-  });
-
-  // Khi count trả về đúng limit thì addMember phải throw
-  it('throws when member limit reached', async () => {
-    prisma.workspaceMember.count.mockResolvedValue(200);
-    await expect(
-      service.addMember({ id: 'ws-1', archived: false } as any, { userId: 'u-1' }),
-    ).rejects.toThrow('MEMBER_LIMIT_REACHED');
-  });
-});
-```
-
-#### 3.8.2 E2E outline
-
-```ts
-// test/workspace/workspace.e2e-spec.ts
-import * as request from 'supertest';
-import { TestApp } from '../app.factory';
-
-// Scenario e2e happy path cho workspace CRUD
-describe('Workspace e2e', () => {
-  let app: TestApp;
-  let token: string;
-
-  // Boot app và đăng nhập user owner fixture
-  beforeAll(async () => {
-    app = await TestApp.create();
-    token = await app.loginAs('owner@example.com');
-  });
-
-  // Chạy flow create -> rename -> archive
-  it('creates -> renames -> archives workspace', async () => {
-    const created = await request(app.server)
-      .post('/workspaces')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Phase 3' })
-      .expect(201);
-
-    await request(app.server)
-      .patch(`/workspaces/${created.body.workspace.id}`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Phase 3 - updated' })
-      .expect(200);
-  });
-});
-```
-
-#### 3.8.3 Manual Hoppscotch script (gợi ý)
-
-1. Owner login → POST `/workspaces` → capture `workspaceId`.
-2. Owner invites member → POST `/workspaces/:id/invites` với 2 email.
-3. Switch user, accept token qua `POST /workspace-invites/:token/accept` (nhớ Bearer).
-4. Owner promote member → `PATCH /workspaces/:id/members/:memberId/role`.
-5. Archive + delete flow.
+**Test 5: Archive + Delete workspace**
+- `PATCH /api/v1/workspaces/:id/archive` — body: `{ "archived": true }`
+- `DELETE /api/v1/workspaces/:id?force=true`
+- Kỳ vọng: 200 + `{ deleted: true }`
 
 ---
 
-## 4. Appendix
+## Checklist Phase 3
 
-- **Folder gợi ý**
-  - `src/workspace` chứa module root
-  - `src/workspace/member`, `src/workspace/invite`
-  - `src/workspace/decorators`, `src/workspace/guards`, `src/workspace/interceptors`, `src/workspace/validators`, `src/workspace/types`
-- **Env sample**
-  ```env
-  MAX_WORKSPACES_PER_USER=50
-  MAX_MEMBERS_PER_WORKSPACE=200
-  WORKSPACE_INVITE_EXPIRY_DAYS=7
-  ```
-- **Scripts**
-  ```bash
-  npm run lint
-  npm run test
-  npm run test:e2e -- workspace
-  ```
+- [ ] Thêm workspace limit config vào `.env`
+- [ ] Update Prisma schema + chạy migration
+- [ ] Tạo shared layer: types, decorators, permission service, interceptor, guards
+- [ ] Tạo Workspace CRUD: DTOs, controller, service
+- [ ] Tạo Member management: DTOs, controller, service
+- [ ] Tạo Invite lifecycle: DTOs, controllers (2), service
+- [ ] Đăng ký tất cả modules vào AppModule
+- [ ] Test trên Hoppscotch/Swagger
+- [ ] Cập nhật Hoppscotch collection JSON
+
+---
+
+## Q&A
+
+**Q1: Tại sao tách thành 3 module (Workspace, Member, Invite) mà không gộp 1?**
+Vì mỗi module có service riêng với logic phức tạp riêng. Gộp hết vào 1 WorkspaceService sẽ ra file 500+ dòng, khó maintain. Tách ra thì mỗi file tập trung 1 nhiệm vụ, dễ test, dễ đọc.
+
+**Q2: WorkspaceContextInterceptor có chạy mỗi request không? Có chậm không?**
+Chỉ chạy trên route nào có `:workspaceId` VÀ dùng `@UseInterceptors(WorkspaceContextInterceptor)`. Mỗi lần chạy = 1 query Prisma (findUnique + include member). Với index trên primary key thì < 1ms.
+
+**Q3: Tại sao Owner không thể tự xóa mình?**
+Vì workspace luôn phải có ít nhất 1 Owner. Owner muốn rời → phải transfer quyền cho người khác trước. Nếu không, workspace thành "vô chủ" — không ai có quyền quản trị.
+
+**Q4: Tại sao invite cần email mismatch check?**
+Tránh trường hợp: mời alice@mail.com nhưng bob@mail.com login và bấm accept link. Đây là lỗ hổng bảo mật nếu không check.

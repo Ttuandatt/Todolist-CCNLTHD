@@ -181,10 +181,22 @@
   - 9.2 Module User (6 mục: cấu trúc, DTOs, Service 5 methods, Multer config, Controller 4 endpoints, Module config)
   - 9.3 Luồng hoạt động tổng thể (request lifecycle end-to-end)
   - Thiết kế extensible: module mới thêm vào 9.3, 9.4, ...
+- Viết **Workspace Suite Design Spec** (`docs/superpowers/specs/2026-03-19-workspace-suite-design.md`): spec kỹ thuật đầy đủ cho Phase 3 — 3 module (Workspace, WorkspaceMember, WorkspaceInvite), phân quyền Owner/Admin/Member, 16+ endpoints, activity logging, giới hạn config-driven
+- Viết **Phase 3 Code Guide** (`docs/code_guide/phase-3-workspace-module.md`, ~1442 dòng): hướng dẫn 7 bước implement Workspace Suite với giải thích "Tại sao" từng kỹ thuật (registerAs config, permission layer, WorkspaceContextInterceptor, custom decorators, DTOs, tests)
+- Cập nhật **Prisma Schema** cho Phase 3: chạy migration `workspace-suite-sync` — thêm enum `InvitationStatus` (PENDING/ACCEPTED/EXPIRED/REVOKED), enum `ActivityLogAction` (8 hành động), refactor model `WorkspaceInvite` với đầy đủ fields (status, token, revokedAt, acceptedAt, expiresAt)
+- Tạo **3 implementation plans** cho Phase 3:
+  - `2026-03-19-workspace-impl-update.md`: plan cập nhật schema + annotations code guide
+  - `2026-03-19-workspace-doc-refresh.md`: plan đồng bộ tài liệu PRD (8 files, 6 tasks)
+  - `2026-03-19-branch-structure-fix.md`: plan fix cấu trúc nhánh `main → develop → feature/*`
+- Bắt đầu **Phase 3 skeleton code** (Bước 1 + shared layer):
+  - `backend/src/common/config/workspace-limits.config.ts`: config giới hạn đọc từ `.env` dùng `registerAs` (maxWorkspacesPerUser, maxMembersPerWorkspace, inviteExpiryDays)
+  - `backend/src/types/express.d.ts`: TypeScript declaration augmentation — dạy TypeScript biết `request.workspaceContext` tồn tại
+  - `backend/src/workspace/types/workspace-context.type.ts`: type `WorkspaceContextPayload` (workspace + membership + permissions object)
+  - `backend/src/workspace/decorators/workspace.decorator.ts`: 2 custom decorators — `@WorkspaceContext` (lấy toàn bộ context) và `@WorkspaceId` (lấy workspace ID đã validate)
 
 **Công việc tuần tới:**
-- Test Phase 2 hoàn chỉnh trên Hoppscotch (10 endpoints Auth + User)
+- Hoàn thành Phase 3 skeleton code (Bước 3-7): WorkspacePermissionService, WorkspaceContextInterceptor, WorkspaceModule, WorkspaceMemberModule, WorkspaceInviteModule
 - Fix BUG-U-001: Multer fileFilter upload .txt trả HTTP 500 thay vì 400
+- Test Phase 2 hoàn chỉnh trên Hoppscotch (10 endpoints Auth + User)
 - Review PR của Vy (Workspace Module) khi sẵn sàng
-- Viết code guide Phase 5 (RBAC + Comments) để Phú follow
 - Hoàn thiện nội dung Chương 2, Chương 10-11 cho báo cáo

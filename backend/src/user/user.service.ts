@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt'; // Thư viện để mã hóa mật khẩu
-import { promises as fs } from 'fs'; // Thư viện để làm việc với hệ thống file
+import { promises as fs, stat } from 'fs'; // Thư viện để làm việc với hệ thống file
 import { join } from 'path'; // Thư viện để làm việc với đường dẫn file
 import { PrismaService } from '../prisma/prisma.service'; // Service để tương tác với cơ sở dữ liệu thông qua Prisma
 import { UpdateProfileDto } from './dto/update-profile.dto'; // DTO để cập nhật thông tin hồ sơ người dùng
 import { ChangePasswordDto } from './dto/change-password.dto'; // DTO để thay đổi mật khẩu người dùng
-
+import { last } from 'rxjs';
 
 @Injectable() // Đánh dấu lớp này là một service có thể được tiêm vào các thành phần khác
 export class UserService {
@@ -20,7 +20,6 @@ export class UserService {
     private readonly profileSelect = { // Cấu hình để chọn các trường cần thiết khi truy vấn thông tin người dùng
         id: true,
         email: true,
-        name: true,
         displayName: true,
         avatar: true,
         status: true,
@@ -98,8 +97,12 @@ export class UserService {
         return { message: 'Password changed successfully' }; // Trả về thông báo thành công
     }
 
-    // ─── Upload avatar người dùng ─────────────────────────────────────────
+    // ─── Xử lý upload ảnh đại diện ─────────────────────────────────────────────
     async uploadAvatar(userId: string, file: Express.Multer.File) {
+        if (!file) {
+            throw new BadRequestException('File is required');
+        }
+
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { avatar: true },
@@ -108,18 +111,21 @@ export class UserService {
             throw new NotFoundException('User not found');
         }
 
-        // Xóa avatar cũ nếu có
-        if (user.avatar) {
-            const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
-            await fs.unlink(oldPath).catch(() => {}); // Bỏ qua lỗi nếu file không tồn tại
+        const avatar = user.avatar;
+        if (avatar) {
+            await fs.unlink(join(__dirname, '..', '..', 'uploads', 'avatars', avatar));
         }
 
-        // Cập nhật avatar mới trong database
+        const filename = `${Date.now()}-${file.originalname}`;
+        const filepath = join(__dirname, '..', '..', 'uploads', 'avatars', filename);
+        await fs.writeFile(filepath, file.buffer);
+
         const updated = await this.prisma.user.update({
             where: { id: userId },
-            data: { avatar: file.filename },
+            data: { avatar: filename },
             select: this.profileSelect,
         });
         return updated;
     }
+
 }

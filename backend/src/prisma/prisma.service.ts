@@ -1,56 +1,63 @@
 /**
  * PrismaService - Database Connection Service
- * 
+ *
  * Service này đóng vai trò là cầu nối giữa NestJS và PostgreSQL database.
  * Sử dụng Prisma 7 với pg driver adapter.
  */
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(PrismaService.name);
+  private pool: Pool;
 
-    private readonly logger = new Logger(PrismaService.name);
-    private pool: Pool;
+  constructor() {
+    // Tạo connection pool với pg
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
 
-    constructor() {
-        // Tạo connection pool với pg
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-        });
+    // Tạo Prisma adapter từ pool
+    const adapter = new PrismaPg(pool);
 
-        // Tạo Prisma adapter từ pool
-        const adapter = new PrismaPg(pool);
+    // Khởi tạo PrismaClient với adapter
+    super({ adapter });
 
-        // Khởi tạo PrismaClient với adapter
-        super({ adapter });
+    this.pool = pool;
+  }
 
-        this.pool = pool;
+  /**
+   * onModuleInit - Kết nối database khi module khởi tạo
+   */
+  async onModuleInit() {
+    try {
+      await this.$connect();
+      this.logger.log('✅ Database connected successfully');
+    } catch (error) {
+      this.logger.error('❌ Failed to connect to database', error);
+      throw error;
     }
+  }
 
-    /**
-     * onModuleInit - Kết nối database khi module khởi tạo
-     */
-    async onModuleInit() {
-        try {
-            await this.$connect();
-            this.logger.log('✅ Database connected successfully');
-        } catch (error) {
-            this.logger.error('❌ Failed to connect to database', error);
-            throw error;
-        }
-    }
-
-    /**
-     * onModuleDestroy - Đóng kết nối khi app shutdown
-     */
-    async onModuleDestroy() {
-        await this.$disconnect();
-        await this.pool.end();
-        this.logger.log('🔌 Database disconnected');
-    }
+  /**
+   * onModuleDestroy - Đóng kết nối khi app shutdown
+   */
+  async onModuleDestroy() {
+    await this.$disconnect();
+    await this.pool.end();
+    this.logger.log('🔌 Database disconnected');
+  }
 }
 
 /*
