@@ -98,7 +98,7 @@ Prisma bao gồm ba thành phần chính làm việc cùng nhau. Prisma Client l
 
 Mặc dù Prisma không có official NestJS package như TypeORM, việc tích hợp vẫn rất đơn giản thông qua một PrismaService wrapper. Prisma hỗ trợ PostgreSQL, MySQL, SQLite, SQL Server, MongoDB, và CockroachDB.
 
-```prisma
+```typescript
 // Ví dụ Schema trong Prisma
 model User {
   id        String   @id @default(uuid())
