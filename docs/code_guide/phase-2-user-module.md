@@ -1,39 +1,58 @@
-# 🚀 Hướng dẫn Code — Phase 2: User Module
+# Code Guide — Phase 2: User Module 👤
 
-## Tổng quan Phase 2
-
-### Chúng ta đang làm gì?
-Sau khi Auth hoạt động ổn định (Phase 1), Phase 2 tập trung vào **User Module** để user có thể xem/cập nhật hồ sơ cá nhân, đổi mật khẩu và upload avatar. Đây là module đầu tiên sử dụng dữ liệu thực tế từ bảng `users`, nên phải xử lý đồng bộ giữa Prisma, JWT guard và file storage.
-
-### Cần đạt được gì?
-1. ✅ `GET /users/me` — trả thông tin user đang đăng nhập (ẩn password)
-2. ✅ `PATCH /users/me` — cập nhật name/bio (hoặc các field mở rộng trong tương lai)
-3. ✅ `POST /users/me/change-password` — đổi mật khẩu với 3 bước xác thực
-4. ✅ `POST /users/me/avatar` — upload avatar theo chuẩn multipart + giới hạn 5MB (NFR 9.1.2)
-
-### Kỹ thuật sử dụng
-- **Prisma `select`** để chỉ trả field cần thiết (tránh lộ password hash)
-- **class-validator DTOs** cho profile + password
-- **bcrypt** để verify/hash mật khẩu mới
-- **Multer FileInterceptor** (từ `@nestjs/platform-express`) cho upload avatar + validate mimetype/size
-- **Serve static assets** bằng `app.useStaticAssets` để FE truy cập `/uploads/avatars/...`
-
-> 💡 Tất cả endpoints này đều yêu cầu JWT (`JwtAuthGuard`). Reuse `@CurrentUser()` để lấy `userId` giống Phase 1.
+> Ngày viết: 2026-03-01
+>
+> Ở Phase 1, ta đã có hệ thống Auth làm "bảo vệ tòa nhà", cấp phát thẻ (JWT) cho cư dân. Sang Phase 2, ta xây dựng "căn hộ cá nhân" — nơi cư dân (User) tự do trang trí phòng ốc: đổi tên, viết tiểu sử, thay ổ khóa (đổi pass), và treo ảnh chân dung (upload avatar).
 
 ---
 
-## Bước 1: Chuẩn bị thư mục & cấu hình upload
+## Tổng quan — Phase 2 có gì vui?
+
+Mục tiêu của ta là 4 API xoay quanh thông tin cá nhân. Bắt đầu từ Phase này, **mọi API đều yêu cầu "trình thẻ" (JWT)** trước khi vào:
+
+1. `GET /users/me` — Xem hồ sơ bản thân (nhưng giấu tịt mã hash password).
+2. `PATCH /users/me` — Sửa tên hiển thị (`displayName`) và tiểu sử (`bio`).
+3. `PATCH /users/me/change-password` — Đổi mật khẩu an toàn (phải nhớ pass cũ, và pass mới không được trùng pass cũ).
+4. `POST /users/me/avatar` — Thay ảnh đại diện (nhận file ảnh thật, nhét vào ổ đĩa, kiểm tra đúng chuẩn không quá 5MB).
+
+### Kỹ thuật đinh của Phase 2
+- **Prisma `select`**: Bộ lọc "chỉ lấy những gì cần thiết", tuyệt đối không vô tình lôi password hash ra ánh sáng.
+- **Multer (FileInterceptor)**: "Bưu điện" nhận bưu kiện (file ảnh), kiểm tra kích thước, loại hàng, rồi ném vào đúng kho (`uploads/avatars/`).
+- **Static Assets (`main.ts`)**: Mở cổng cho Frontend vào trực tiếp kho chứa ảnh để lấy ảnh hiển thị lên UI.
+
+---
+
+## Khởi động: Cập nhật Prisma Schema 🗄️
+
+Trước khi xây nhà, phải có bản vẽ. User cần thêm 3 dòng vào schema: `displayName`, `bio` và `avatar`.
+
+📁 **File:** `prisma/schema.prisma`
+
+```prisma
+model User {
+  // ...các field cũ từ Phase 1...
+  name          String        // Tên lúc đăng ký ban đầu (bắt buộc)
+  displayName   String?       // Tên hiển thị thích khoe sau này (optional)
+  bio           String?       // Tiểu sử ngắn gọn (optional)
+  avatar        String?       // Tên file ảnh đã lưu (ví dụ: avatar-123.jpg)
+  // ...
+}
+```
+
+Chạy migration để DB cập nhật:
+```bash
+npx prisma migrate dev --name add-displayName-bio-to-user
+```
+
+> **Hỏi:** Tại sao `name` bắt buộc mà `displayName` lại optional? Vì lúc đăng ký ai cũng phải có tên. Còn `displayName` (nickname) là tiện ích phụ, user thích thì cập nhật, không thì FE cứ lấy `name` ra xài tạm.
+
+---
+
+## Bước 1: Setup Bưu Điện Multer (Upload Config) 📦
 
 ### Tại sao?
-Avatar lưu ở local trong dev (theo NFR 9.1.4). Ta cần chỗ chứa cố định + config Multer để enforce size/mimetype ngay khi nhận file.
+Khi user đẩy file ảnh lên, ta chặn ngay từ cửa: "Có phải ảnh không? Chuyển vào kho `/uploads/avatars/`. Quá 5MB là trả về!". Nhưng nếu cái kho đó chưa được xây (code vừa clone về chưa có thư mục `uploads`) thì hệ thống sập cái rầm. Ta phải viết code tự động "xây kho" nếu kho chưa có.
 
-### Kỹ thuật
-- Tạo thư mục `uploads/avatars` ngay tại root backend (`backend/uploads/avatars`)
-- Dùng `diskStorage` của Multer để đặt tên file theo `userId-timestamp.ext`
-- Giới hạn size `5 * 1024 * 1024`
-- Chỉ chấp nhận `image/jpeg`, `image/png`, `image/gif`
-
-### Code + Giải thích
 📁 **File:** `src/common/config/multer.config.ts`
 
 ```typescript
@@ -41,24 +60,36 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
+// 1. CHUẨN BỊ KHO CHỨA
+// Lấy đường dẫn gốc của project + uploads/avatars
 const avatarDir = join(process.cwd(), 'uploads', 'avatars');
+
+// Nếu kho chưa xây? Xây ngay lập tức (recursive: true để xây luôn thư mục cha nếu cần)
 if (!existsSync(avatarDir)) {
   mkdirSync(avatarDir, { recursive: true });
 }
 
+// 2. CẤU HÌNH BƯU ĐIỆN VÀ NHÓM KIỂM KÊ
 export const avatarMulterConfig = {
+  // Kho bãi (storage): Lệnh cho Multer ghi trực tiếp file xuống ổ cứng (diskStorage)
   storage: diskStorage({
     destination: avatarDir,
     filename: (_req, file, callback) => {
+      // Đổi tên file để tránh 2 ông cùng up 'avatar.jpg' chép đè nhau
+      // Đóng dấu thời gian + mã số ngẫu nhiên
       const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
       callback(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
     },
   }),
+
+  // Kích thước tối đa: 5MB
   limits: { fileSize: 5 * 1024 * 1024 },
+
+  // Bộ lọc hải quan: Chỉ nhận ảnh!
   fileFilter: (_req, file, callback) => {
     const allowed = ['image/jpeg', 'image/png', 'image/gif'];
     if (!allowed.includes(file.mimetype)) {
-      return callback(new Error('Only jpg/png/gif are allowed'));
+      return callback(new Error('Chỉ chấp nhận file ảnh (jpg, png, gif)!'), false);
     }
     callback(null, true);
   },
@@ -67,277 +98,211 @@ export const avatarMulterConfig = {
 
 ---
 
-## Bước 2: Tạo DTOs cho profile & password
+## Bước 2: DTOs — Cổng kiểm tra hành lý 🛂
 
-### Tại sao?
-ValidationPipe (Phase 0) sẽ tự reject input sai format. Cần DTO riêng cho từng use case để giữ schema rõ ràng.
+Chặn đứng các thể loại phá hoại từ ngoài vào. Chỉ cho những gì ta cho phép đi lọt.
 
-### Kỹ thuật
-- Gắn `@IsOptional()` cho field không bắt buộc
-- Regex password giống Phase 1 để đảm bảo độ mạnh
-- `confirmPassword` sẽ được kiểm tra trong service (vì class-validator không biết field khác)
-
-### Code + Giải thích
 📁 **File:** `src/user/dto/update-profile.dto.ts`
-
 ```typescript
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateProfileDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(50, { message: 'Tên tối đa 50 ký tự' })
-  name?: string;
+  // @IsOptional: Sửa tên thì sửa, không sửa thì cập nhật mỗi cái bio cũng ok
+  @IsOptional() @IsString() @MaxLength(50)
+  displayName?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(160, { message: 'Bio tối đa 160 ký tự' })
+  @IsOptional() @IsString() @MaxLength(160) // Cỡ Bio Twitter
   bio?: string;
 }
 ```
 
 📁 **File:** `src/user/dto/change-password.dto.ts`
-
 ```typescript
 import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class ChangePasswordDto {
-  @IsString()
-  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu hiện tại' })
-  currentPassword: string;
+  @IsString() @IsNotEmpty()
+  currentPassword!: string; // Pass cũ, bắt buộc có để biết chính chủ
 
-  @IsString()
-  @MinLength(8, { message: 'Mật khẩu mới phải >= 8 ký tự' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).+$/, {
-    message: 'Mật khẩu mới phải có chữ hoa, chữ thường, số, ký tự đặc biệt',
-  })
-  newPassword: string;
+  @IsString() @MinLength(8)
+  @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, { message: 'Pass mới quá yếu!' })
+  newPassword!: string;
 
-  @IsString()
-  @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
-  confirmPassword: string;
+  @IsString() @IsNotEmpty()
+  confirmPassword!: string; 
+  // Việc so sánh newPassword === confirmPassword ta sẽ nhường cho Service làm.
+  // DTO chỉ kiểm tra từng món đơn lẻ thôi.
 }
 ```
 
 ---
 
-## Bước 3: Viết UserService (business logic)
+## Bước 3: UserService — Thợ máy tòa nhà 🛠️
 
-### Tại sao?
-Service gom toàn bộ logic DB + bảo mật (hash password, xóa avatar cũ, revoke token). Controller chỉ forward request → service.
+Đây là chỗ tay chân lấm lem dầu mỡ. Thọc sâu vào DB, móc password cũ ra so sáng, xóa avatar cũ rích đi, băm password mới dán lại vào.
 
-### Kỹ thuật
-- Prisma `select` để tránh trả password hash
-- `bcrypt.compare` / `bcrypt.hash`
-- Dùng `fs/promises` để xóa avatar cũ (nếu lưu file local)
-- Sau khi đổi mật khẩu → revoke toàn bộ refresh tokens + blacklist access token hiện tại (reuse bảng `invalidatedToken`)
-
-### Code + Giải thích
 📁 **File:** `src/user/user.service.ts`
 
 ```typescript
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { PrismaService } from '../prisma/prisma.service';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto, ChangePasswordDto } from './dto'; // gom chung gọn gàng
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
+  // 1️⃣ BỘ LỌC PROFILE: Xài chung cho mọi method trả về User. 
+  // Tôn chỉ tối cao: NGHIÊM CẤM load cột 'password' ra ánh sáng.
   private readonly profileSelect = {
-    id: true,
-    email: true,
-    name: true,
-    avatar: true,
-    status: true,
-    bio: true,
-    emailVerified: true,
-    lastLoginAt: true,
-    createdAt: true,
-    updatedAt: true,
+    id: true, email: true, name: true, displayName: true,
+    avatar: true, status: true, bio: true, 
+    lastLoginAt: true, createdAt: true, updatedAt: true,
   } as const;
 
+  // 2️⃣ XEM HỒ SƠ
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: this.profileSelect,
+      select: this.profileSelect, // Áp dụng bộ lọc
     });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('Không tìm thấy cư dân này');
     return user;
   }
 
+  // 3️⃣ CẬP NHẬT TÊN / TIỂU SỬ
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    if (!dto.name && !dto.bio) {
-      throw new BadRequestException('Không có dữ liệu để cập nhật');
+    // Không gửi gì thì thôi gọi DB làm gì cho mệt?
+    if (!dto.displayName && !dto.bio) {
+      throw new BadRequestException('Bét ra cũng phải cập nhật 1 món chứ?');
     }
 
-    const updated = await this.prisma.user.update({
+    return await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(dto.name ? { name: dto.name.trim() } : {}),
-        ...(dto.bio ? { bio: dto.bio.trim() } : {}),
+        // Cú pháp rải thảm: Có displayName thì thêm { displayName: ... } vào update list, không thì {} rỗng
+        ...(dto.displayName ? { displayName: dto.displayName } : {}),
+        ...(dto.bio ? { bio: dto.bio } : {}),
       },
-      select: this.profileSelect,
+      select: this.profileSelect, // Update xong móc DB ra trả FE luôn khỏi mất công FE GET lại
     });
-
-    return updated;
   }
 
+  // 4️⃣ ĐỔI CHÌA KHÓA (PASSWORD)
   async changePassword(userId: string, dto: ChangePasswordDto) {
+    // 1. Kiểm tra cặp pass mới
     if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException('Xác nhận mật khẩu không khớp');
+      throw new BadRequestException('Pass mới và pass xác nhận gõ không tệp khớp!');
     }
 
+    // 2. Kéo pass cũ (hash) lên để test
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { password: true },
+      where: { id: userId }, select: { password: true }, // Chỉ chĩa súng vào cột password
     });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('Lỗi hệ thống');
 
+    // 3. Đọ pass cũ nhập từ API vs pass cũ trong ổ cứng gác cổng
     const matches = await bcrypt.compare(dto.currentPassword, user.password);
-    if (!matches) {
-      throw new BadRequestException('Mật khẩu hiện tại không chính xác');
-    }
+    if (!matches) throw new BadRequestException('Pass cũ sai bét!');
 
+    // 4. Pass mới không được luộc lại pass cũ
     const isSame = await bcrypt.compare(dto.newPassword, user.password);
-    if (isSame) {
-      throw new BadRequestException('Mật khẩu mới phải khác mật khẩu cũ');
-    }
+    if (isSame) throw new BadRequestException('Vui lòng nghĩ pass khác đi');
 
+    // 5. Băm nát pass mới
     const hashed = await bcrypt.hash(dto.newPassword, 10);
 
+    // 6. ⚔️ TRANSACTION: Vừa dán pass mới, vừa tịch thu toàn bộ thẻ xe cũ (refresh token)
+    // All or nothing - Lỡ thu thẻ lỗi thì pass cũng không bị thay!
     await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { password: hashed },
-      }),
+      this.prisma.user.update({ where: { id: userId }, data: { password: hashed } }),
       this.prisma.refreshToken.updateMany({
         where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: new Date() }, // Giải tán hết rác token
       }),
     ]);
 
-    return { message: 'Password changed successfully' };
+    return { message: 'Thay khóa thành công. Mời đăng nhập lại.' };
   }
 
+  // 5️⃣ THAY ẢNH CHÂN DUNG
   async uploadAvatar(userId: string, file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('File avatar không tồn tại');
-    }
+    // Tới bước này, file thực chất ĐÃ vứt vào disk /uploads/avatars/ rồi (do Multer làm trước)
+    // file.filename chính là tên file đang nằm ngoan trong thư mục.
 
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { avatar: true },
+      where: { id: userId }, select: { avatar: true },
     });
+    if (!user) throw new NotFoundException('Tài khoản bốc hơi');
 
-    const storedPath = `uploads/avatars/${file.filename}`;
-    const publicPath = `/${storedPath}`;
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: { avatar: publicPath },
-      select: this.profileSelect,
-    });
-
-    if (user?.avatar) {
-      const absolutePath = join(process.cwd(), user.avatar.replace(/^\//, ''));
-      await fs.rm(absolutePath, { force: true });
+    // Dọn toilet: Ảnh mốc cũ xì? Dọn ra bãi rác để nhẹ ổ cứng!
+    if (user.avatar) {
+      const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
+      await fs.unlink(oldPath).catch(() => {}); // Cứ nhắm mắt xóa, không có thì bỏ qua khỏi la làng
     }
 
-    return updated;
+    // Cầm bút dạ ghi tên file ảnh mới vào sổ hộ khẩu Prisma
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: file.filename }, // Ta LƯU MỖI CÁI TÊN (vd: avatar-123.jpg), KHÔNG lưu full path URL nha!
+      select: this.profileSelect,
+    });
   }
 }
 ```
 
-> ⚠️ Store path trong DB ở dạng `/uploads/...` để FE dùng trực tiếp, nhưng khi xóa file nhớ bỏ dấu `/` đầu tiên trước khi `path.join` (như ví dụ trên).
-
 ---
 
-## Bước 4: Viết UserController
+## Bước 4: UserController — Lễ tân nhận khách 💁‍♀️
 
-### Tại sao?
-Controller định nghĩa endpoints theo API Spec 3.2–3.4 (PRD). Áp dụng `@UseGuards(JwtAuthGuard)` toàn controller và dùng decorator `@CurrentUser()`.
+Code Controller càng mỏng càng tốt. Nhiệm vụ chỉ là hứng Request (HTTP body/file), lấy mặt User (cái `@CurrentUser` thần thánh Phase 1), rồi quăng tuột xuống Service. 
 
-### Kỹ thuật
-- `@Get('me')`, `@Patch('me')`, `@Post('me/change-password')`, `@Post('me/avatar')`
-- `@UseInterceptors(FileInterceptor('avatar', avatarMulterConfig))`
-- `ParseFilePipe` để validate size/mimetype ngay tại controller (double check cùng Multer)
-
-### Code + Giải thích
 📁 **File:** `src/user/user.controller.ts`
 
 ```typescript
-import {
-  Controller,
-  Get,
-  Patch,
-  Post,
-  Body,
-  UseGuards,
-  UseInterceptors,
-  UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Controller, Get, Patch, Post, Body, UseGuards, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { UserService } from './user.service';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto, ChangePasswordDto } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { avatarMulterConfig } from '../common/config/multer.config';
+import { avatarMulterConfig } from 'src/common/config/multer.config';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard) // 🛡 Cắm luôn cái khiên bảo vệ JWT chình ình trước chốt cửa
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('me')
-  getProfile(@CurrentUser('id') userId: string) {
-    return this.userService.getProfile(userId);
-  }
+  getProfile(@CurrentUser('id') userId: string) { return this.userService.getProfile(userId); }
 
-  @Patch('me')
-  updateProfile(
-    @CurrentUser('id') userId: string,
-    @Body() dto: UpdateProfileDto,
-  ) {
+  @Patch('me') // PATCH chứ không PUT. Sửa ti tiện vài thứ chứ ai rảnh thay sạch.
+  updateProfile(@CurrentUser('id') userId: string, @Body() dto: UpdateProfileDto) {
     return this.userService.updateProfile(userId, dto);
   }
 
-  @Post('me/change-password')
-  changePassword(
-    @CurrentUser('id') userId: string,
-    @Body() dto: ChangePasswordDto,
-  ) {
+  @Patch('me/change-password')
+  changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
     return this.userService.changePassword(userId, dto);
   }
 
   @Post('me/avatar')
+  // Block Multer trước mâm!
   @UseInterceptors(FileInterceptor('avatar', avatarMulterConfig))
   uploadAvatar(
     @CurrentUser('id') userId: string,
     @UploadedFile(
+      // Chốt ParseFilePipe lại 1 vòng nữa. Cái này nó chặn lại file lỗi sau khi Multer hắt xì
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif)$/ }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif)$/i }),
         ],
-      }),
-    )
-    file: Express.Multer.File,
+      })
+    ) file: Express.Multer.File,
   ) {
     return this.userService.uploadAvatar(userId, file);
   }
@@ -346,141 +311,87 @@ export class UserController {
 
 ---
 
-## Bước 5: Cập nhật UserModule
+## Bước 5: Đăng ký Hộ khẩu — UserModule & Sinh lộ Static Asset 🔌
 
-### Tại sao?
-Module phải đăng ký controller, service, và Multer config. Tách biệt dependency để module tự chứa logic user.
+Các mảng nhỏ xong thì phải kết vào ruột. 
 
-### Kỹ thuật
-- Import `MulterModule.register(avatarMulterConfig)` để DI hoạt động
-- Export UserService nếu module khác cần (ví dụ Notification module send name)
-
-### Code + Giải thích
 📁 **File:** `src/user/user.module.ts`
-
 ```typescript
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { avatarMulterConfig } from '../common/config/multer.config';
+import { avatarMulterConfig } from 'src/common/config/multer.config';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 
 @Module({
+  // Nạp cấu hình Multer để cả xóm xài
   imports: [MulterModule.register(avatarMulterConfig)],
   controllers: [UserController],
   providers: [UserService],
-  exports: [UserService],
+  exports: [UserService], // Bật cổng cho module khác nhờ vả hàm của mình
 })
 export class UserModule {}
 ```
 
-> Đừng quên import `UserModule` vào `AppModule` (nếu chưa). Vì PrismaModule đã global, không cần làm gì thêm.
+> **Đừng quên:** import `UserModule` vào `AppModule` nhé!
 
----
+### Mở cửa nhà kho ảnh ra cho giang hồ xem (Chỉ đọc) 
+User tải ảnh lên `uploads/avatars/`. Nhưng API Server đâu có cấp thư mục `/uploads/` này làm đường web? Phải khoan tường kéo ống `useStaticAssets`.
 
-## Bước 6: Cho phép truy cập file avatar từ browser
-
-### Tại sao?
-Sau khi upload, FE cần URL công khai (`/uploads/avatars/<file>`). Nest phải expose folder uploads dưới dạng static assets.
-
-### Kỹ thuật
-- Sử dụng `NestExpressApplication`
-- `app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' })`
-
-### Code + Giải thích
 📁 **File:** `src/main.ts`
-
 ```typescript
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { NestExpressApplication } from '@nestjs/platform-express'; // Ép kiểu để báo Express
 import { join } from 'path';
-// ...existing imports
+import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Nhét loại dõng dạc <NestExpressApplication> vô Nest mới ló mấy lệnh của Express ra
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // ...existing global pipes/interceptors/filters
 
+  // ...các setup cũ như ValidationPipe, Prefix...
+
+  // Bày thư mục uploads trực tiếp lên bàn mổ Web Server:
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
+    prefix: '/uploads/', // Trỏ url localhost:3333/uploads/avatars/hinhanhcuatoi.jpg
   });
 
-  await app.listen(process.env.PORT ?? 3333);
+  await app.listen(3333);
 }
 bootstrap();
 ```
 
 ---
 
-## Bước 7: Cập nhật Hoppscotch Collection
+## Cầm Hoppscotch / Postman lên múa 🧪
 
-### Tại sao?
-Testing team cần import collection có đủ endpoints Phase 2.
-
-### Kỹ thuật
-- Mở `backend/docs/hoppscotch-collection.json`
-- Thêm tag `User` đã có → append paths:
-  - `GET /users/me`
-  - `PATCH /users/me`
-  - `POST /users/me/change-password`
-  - `POST /users/me/avatar` (type multipart, form-data sample)
-- Reuse schema `UserProfileResponse` (tạo mới nếu cần)
-
-### Gợi ý snippet (rút gọn)
-```json
-"/users/me": {
-  "get": {
-    "tags": ["User"],
-    "summary": "Lấy hồ sơ cá nhân",
-    "responses": {
-      "200": {
-        "description": "Profile",
-        "content": { "application/json": { "$ref": "#/components/schemas/UserProfile" } }
-      }
-    }
-  }
-}
-```
+1. **Login vặt** (lấy token JWT bế lên ô Auth).
+2. Tạt ngang `GET /api/v1/users/me` nhặt mặt mũi bản thân về coi.
+3. Kẹp body JSON dán mớ `{"displayName": "Tuấn Xinh Trai"}` hẩy vô `PATCH /api/v1/users/me`. Gọi lại GET coi tên cập nhật chưa.
+4. Lùa dao `PATCH /api/v1/users/me/change-password` quất sai pass coi nó lẩy lên chửi hông. Đúng là nó cho qua, xong mang cái token cũ chạy GET /users/me báo lỗi tiếp vì refresh bị tiễn rồi!
+5. Gõ `POST /api/v1/users/me/avatar`. Ráng chọn **form-data** kẹp cái ảnh chừng đôi 3MB quất lên (key name là `avatar`). Nhớ lôi URL `/uploads/avatars/...` dán thẳng thanh URL Chrome coi ảnh phẹt ra màn hình hông.
 
 ---
 
-## Bước 8: Test nhanh
-
-1. `npm run start:dev`
-2. Swagger `Authorize` với access token từ Phase 1
-3. `GET /api/v1/users/me` → trả profile hiện tại
-4. `PATCH /api/v1/users/me` với `{ "name": "John Updated" }` → verify `updatedAt` đổi
-5. `POST /api/v1/users/me/change-password`:
-   - Sai `currentPassword` → 400
-   - `newPassword == confirmPassword` + khác mật khẩu cũ → 200
-6. `POST /api/v1/users/me/avatar` (multipart) với file 4MB jpg → 200 + avatar url
-7. Dùng file 6MB hoặc PDF → 400 (ParseFilePipe chặn)
-8. Mở `http://localhost:3333/uploads/avatars/<filename>` trên browser → ảnh hiển thị
+## Checklist Phase 2 ✅
+- [ ] Add `displayName`, `bio`, `avatar` vô Schema và cày migration.
+- [ ] Tạo thợ chặn cửa file tại `multer.config.ts`.
+- [ ] DTO rào Pass mới gõ regex tè le.
+- [ ] UserService viết trọn gói (Giấu biệt password ở `profileSelect`). Xóa file cũ chà nồi sạch sẽ!
+- [ ] Controller dán `FileInterceptor`. Guard khóa trọn.
+- [ ] Bật ống xả `useStaticAssets` ở main.
+- [ ] Chọt Swagger + Hoppscotch tè le rát máy.
 
 ---
 
-## Checklist Phase 2
+## Q&A Bóc Gạch 🥸
 
-- [ ] Tạo `src/common/config/multer.config.ts`
-- [ ] Thêm DTOs `UpdateProfileDto`, `ChangePasswordDto`
-- [ ] Viết `UserService` với 4 method chính
-- [ ] Viết `UserController` (4 endpoints, guard toàn controller)
-- [ ] Update `UserModule` + import vào `AppModule`
-- [ ] Bổ sung `useStaticAssets` trong `main.ts`
-- [ ] Thêm endpoints vào Hoppscotch collection
-- [ ] Test chuỗi: profile → update → change password → upload avatar
+**Q: Ủa cái `profileSelect` có gì bí thuật à? Quất `const { password, ...rest } = user` không nhàn hơn?**
+> Được! Code vậy chạy láng, nhưng dở! Vì DB phải è ạch cuốc pass lên memory Nodejs rồi mầy mới vứt đi. `select` thì chặn luôn từ lệnh `SELECT` dưới hầm xe MySQL/PostgreSQL, nhẹ nhõm băng chuyền truyền tải. Cực khôn!
 
----
+**Q: Cứ xóa avatar file trước khi update DB? Rủi chập DB cúp điện thì mất ảnh user rủi sao?!**  
+> Đúng bài thiệt á! Chuẩn thì Update thành công rồi mới quét xóa. Nhưng ở code tutorial này chơi lật cho lẹ sòng. Update DB fail là tỉ lệ trúng vé xs. Các công ty lớn quăng qua AWS S3 là nó vứt sọt rác sau 7 ngày nhàn hơn nhiều!
 
-## Q&A
-
-**Q1: Có cần cho phép đổi email?**
-> Chưa. Theo PRD Phase 2 chỉ chỉnh name/bio. Nếu đổi email → phải xử lý re-verify, sẽ lên Phase sau.
-
-**Q2: Sau khi đổi mật khẩu có cần logout user?**
-> Có. Ta đã revoke toàn bộ refresh token. FE nên gọi lại `/auth/login` để lấy token mới.
-
-**Q3: Prod có xóa file avatar cũ không?**
-> Có — `fs.rm` chạy sau khi cập nhật DB. Khi chuyển sang S3, thay đoạn này bằng SDK deleteObject.
-
-**Q4: Làm sao mock upload trên test?**
-> Dùng `supertest` với `.attach('avatar', path.join(__dirname, 'fixtures/avatar.png'))`. Nest/Multer xử lý tương tự môi trường thật.
+**Q: FileInterceptor vs ParseFilePipe. Hai cha con thằng này cùng validate là sao?**  
+> `FileInterceptor` (khoanh vùng trong `multer.config.ts`) thì đứng canh **trên đường ống nước tràn vào**! Rác rưởi là phọt luôn không nhận nạp RAM -> Hiệu năng cực đỉnh!
+> `ParseFilePipe` thì đợi nó chảy xong kiểm tra lại lần cuối định dạng trước khi quăng lên controller. Khớp 2 lá chắn cho đỡ ghi đĩa lậu!

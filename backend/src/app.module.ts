@@ -10,6 +10,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { UserModule } from './user/user.module';
+import { WorkspaceModule } from './modules/workspace/workspace.module';
+import { ProjectModule } from './modules/project/project.module';
 
 @Module({
   imports: [
@@ -18,12 +21,15 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     // .forRoot() = load file .env tại root project
     AuthModule,
     PrismaModule,
+    UserModule,
+    WorkspaceModule,
+    ProjectModule,
   ],
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard
-    }
+      useClass: JwtAuthGuard,
+    },
     // Cách đăng ký Global Guard qua DI:
     //   provide: APP_GUARD = bảo NestJS "đây là guard global"
     //   useClass: JwtAuthGuard = dùng class JwtAuthGuard
@@ -31,7 +37,6 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     // Tại sao không dùng app.useGlobalGuards() trong main.ts?
     // → Vì JwtAuthGuard cần inject Reflector (để đọc @Public() metadata)
     // → app.useGlobalGuards() không hỗ trợ DI, chỉ APP_GUARD mới hỗ trợ
-  ]
+  ],
 })
-
-export class AppModule { }
+export class AppModule {}

@@ -4,51 +4,19 @@
 
 ---
 
-## Tuần 1: 12/01 - 18/01
+## Giai đoạn chuẩn bị: 12/01 - 01/02
 
-**Kết quả thực hiện trong tuần:**
-- Họp nhóm lần đầu, thống nhất chọn đề tài "Tìm hiểu công nghệ NestJS"
-- Xác định phạm vi dự án: NestJS backend + PostgreSQL + Prisma ORM
-- Tạo repository GitHub cho dự án (Ttuandatt/Todolist-CCNLTHD)
-- Nghiên cứu tổng quan NestJS: đọc tài liệu chính thức, xem kiến trúc Module-Controller-Service
-
-**Công việc tuần tới:**
-- Cài đặt môi trường phát triển
-- Tìm hiểu sâu hơn về kiến trúc NestJS
-
----
-
-## Tuần 2: 19/01 - 25/01
-
-**Kết quả thực hiện trong tuần:**
+**Tóm tắt (3 tuần đầu dự án):**
+- Họp nhóm lần đầu, thống nhất đề tài, xác định phạm vi dự án
+- Tạo repository GitHub (Ttuandatt/Todolist-CCNLTHD)
+- Nghiên cứu tổng quan NestJS: kiến trúc Module-Controller-Service, Dependency Injection, Decorators
 - Cài đặt môi trường: Node.js, NestJS CLI, Docker Desktop, PostgreSQL
-- Khởi tạo project NestJS bằng `nest new backend`
-- Cấu hình Prisma ORM: cài đặt, tạo `schema.prisma`, kết nối PostgreSQL
-- Tạo skeleton cho Auth Module, User Module, Prisma Module
-- Nghiên cứu Dependency Injection, Decorators, TypeScript fundamentals
-
-**Công việc tuần tới:**
-- Bắt đầu viết tài liệu phân tích yêu cầu
-- Thiết kế cơ sở dữ liệu
+- Khởi tạo project NestJS, cấu hình Prisma ORM, tạo skeleton modules
+- Viết tài liệu phân tích yêu cầu: 145 câu hỏi, 40+ User Stories, 60 Use Cases, 72 chức năng (MoSCoW), NFR
 
 ---
 
-## Tuần 3: 26/01 - 01/02
-
-**Kết quả thực hiện trong tuần:**
-- Viết tài liệu thu thập yêu cầu (Requirements Gathering): 145 câu hỏi phỏng vấn
-- Viết User Stories: 40+ stories với acceptance criteria đầy đủ
-- Viết đặc tả Use Cases: 60 use cases với luồng chính và luồng thay thế
-- Liệt kê chức năng (Features List): 72 chức năng, phân loại MoSCoW (48 Must, 20 Should, 4 Could)
-- Viết yêu cầu phi chức năng (NFR): performance, security, scalability
-
-**Công việc tuần tới:**
-- Thiết kế ERD và Data Dictionary
-- Vẽ các sơ đồ phân tích
-
----
-
-## Tuần 4: 02/02 - 08/02
+## Tuần 1: 02/02 - 08/02
 
 **Kết quả thực hiện trong tuần:**
 - Thiết kế ERD: 13 entities (User, Workspace, Project, Task, Subtask, Comment, Label, Notification, ActivityLog...) với đầy đủ thuộc tính và quan hệ
@@ -65,7 +33,7 @@
 
 ---
 
-## Tuần 5: 09/02 - 15/02
+## Tuần 2: 09/02 - 15/02
 
 **Kết quả thực hiện trong tuần:**
 - Vẽ DFD (Data Flow Diagram): luồng dữ liệu giữa User ↔ System ↔ Database
@@ -83,7 +51,7 @@
 
 ---
 
-## Tuần 6: 16/02 - 22/02
+## Tuần 3: 16/02 - 22/02
 
 **Kết quả thực hiện trong tuần:**
 - Viết Chương 3 (Cài đặt môi trường): Node.js, Nest CLI, Docker PostgreSQL, cấu trúc thư mục project
@@ -100,7 +68,7 @@
 
 ---
 
-## Tuần 7: 23/02 - 01/03
+## Tuần 4: 23/02 - 01/03
 
 **Kết quả thực hiện trong tuần:**
 - Tối ưu thứ tự chương: đổi Kỹ thuật nâng cao (Ch6) trước Authentication (Ch7) — giải thích Guards/Decorators lý thuyết trước khi áp dụng thực tế
@@ -127,7 +95,7 @@
 
 ---
 
-## Tuần 8: 02/03 - 08/03
+## Tuần 5: 02/03 - 08/03
 
 **Kết quả thực hiện trong tuần:**
 - Thiết kế cơ chế **Token Blacklist (InvalidatedToken)**: khi user logout hoặc bị ban, access token bị vô hiệu hóa tức thì qua bảng DB
@@ -162,3 +130,73 @@
 - Hoàn thành Phase 1: Bước 10 (Test toàn bộ trên Hoppscotch/Swagger)
 - Code Phase 2: User Module (get profile, update profile, change password, upload avatar)
 - Hoàn thiện nội dung Chương 2, 8, 9, 10-11 cho báo cáo
+
+---
+
+## Tuần 6: 09/03 - 15/03
+
+**Kết quả thực hiện trong tuần:**
+- Viết code guide **Phase 2 — User Module** (`docs/code_guide/phase-2-user-module.md`): hướng dẫn từng bước implement 4 endpoints (GET/PATCH `/users/me`, change-password, upload avatar), giải thích kỹ thuật Multer, Prisma select, bcrypt verify
+- Viết **`code_guide_rule.md`** — quy tắc chuẩn viết code guide cho cả nhóm: format, cách giải thích, cách viết bước-by-bước
+- Lập kế hoạch phân công toàn nhóm — tạo **`TASK_ASSIGNMENT.md`**:
+  - Phân chia rõ Phase 3 (Vy), Phase 4+5 (Phú), Phase 6+7 (Huyền)
+  - Liệt kê chi tiết endpoints, logic quan trọng, checklist đạt được cho từng người
+  - Bổ sung quy trình Git Workflow đầy đủ: cấu trúc nhánh, lệnh từng bước, commit convention
+  - Timeline 4 tuần còn lại (Tuần 6–9)
+- Cập nhật `WORKLOG_NHOM.md` — thêm nội dung worklog nhóm đang thiếu
+- Chuẩn bị setup git workflow bài bản: tạo nhánh `develop`, nhánh `feature/*`
+
+**Công việc tuần tới:**
+- Hoàn thành Phase 2 — User Module: code + test 4 endpoints
+- Setup git workflow: tạo `develop`, tạo `feature/dat-user-module`, tạo PR sau khi xong
+- Review PR của Vy (WorkspaceModule) sau khi Vy hoàn thành
+- Viết code guide Phase 5 (RBAC + Comments) để Phú follow
+
+---
+
+## Tuần 7: 16/03 - 22/03
+
+**Kết quả thực hiện trong tuần:**
+- Hoàn thành code **Phase 2 — User Module** trên nhánh `feature/dat-user-module`:
+  - Tạo `UserController` (4 endpoints: `GET /users/me`, `PATCH /users/me`, `PATCH /users/me/change-password`, `POST /users/me/avatar`)
+  - Viết `UserService` hoàn chỉnh: `profileSelect` (11 fields, loại bỏ password), `getProfile`, `updateProfile`, `changePassword` (transaction: hash + revoke tokens), `uploadAvatar` (xóa file cũ + cập nhật DB)
+  - Cấu hình Multer (`multer.config.ts`): `diskStorage`, `fileFilter` (chỉ JPEG/PNG/GIF), giới hạn 5MB, tên file random `avatar-{timestamp}-{random}.{ext}`
+  - Cập nhật `UserModule` (import MulterModule), `AppModule`, `main.ts` (static assets `/uploads/`)
+  - Tạo Prisma migration `add_display_name_bio_to_user`: thêm 2 fields `displayName`, `bio` vào bảng `users`
+  - Tạo 2 DTOs: `UpdateProfileDto` (@IsOptional, @MaxLength 50/160), `ChangePasswordDto` (3 fields + @Matches regex password)
+- Viết tài liệu test:
+  - `02-user-module-test-cases.md`: 78 test cases (19 unit UserService, 5 unit UserController, 27 integration, 11 boundary, 16 security)
+  - `TEST_DATA_STRATEGY.md`: quy chuẩn factory functions, fixtures, cleanup, mock data, helper functions
+- Tạo **`report_writing_rule.md`** — quy tắc viết báo cáo học thuật: 10 mục (nguyên tắc chung, cấu trúc chương, đoạn văn, trình bày code, bảng/hình, trích dẫn, typography, template, lỗi thường gặp, checklist)
+- Viết **Chương 8: Phân tích và thiết kế hệ thống** (`08-system-analysis-design-chapter.md`):
+  - 8.1 Tổng quan dự án + Biểu đồ Use Case (Mermaid: 2 actors, 10 use cases)
+  - 8.2 Kiến trúc hệ thống (sơ đồ module, sơ đồ phụ thuộc — Mermaid)
+  - 8.3 Thiết kế CSDL + **ERD Mermaid** (tổng quan 17 bảng + chi tiết 4 bảng Auth/User với fields)
+  - 8.4 Thiết kế API (quy ước RESTful, 10 endpoints, response chuẩn hóa, validation)
+  - 8.5 **7 Sequence Diagrams Mermaid** (Register, Login, Refresh Token Rotation, Logout Blacklist, Get Profile qua Guard, Change Password Transaction, Upload Avatar Multer)
+  - 8.6 Thiết kế bảo mật (Dual Token, Blacklist, Rotation, Global Guard, bcrypt, OWASP)
+  - 8.7 Thiết kế File Upload + 8.8 Cấu hình Global
+- Viết **Chương 9: Triển khai chi tiết các module** (`09-module-implementation-chapter.md`):
+  - 9.1 Module Authentication (8 mục: cấu trúc, DTOs, Service 6 methods, Controller 6 endpoints, Guard, Strategy, Custom Decorators, Module config)
+  - 9.2 Module User (6 mục: cấu trúc, DTOs, Service 5 methods, Multer config, Controller 4 endpoints, Module config)
+  - 9.3 Luồng hoạt động tổng thể (request lifecycle end-to-end)
+  - Thiết kế extensible: module mới thêm vào 9.3, 9.4, ...
+- Viết **Workspace Suite Design Spec** (`docs/superpowers/specs/2026-03-19-workspace-suite-design.md`): spec kỹ thuật đầy đủ cho Phase 3 — 3 module (Workspace, WorkspaceMember, WorkspaceInvite), phân quyền Owner/Admin/Member, 16+ endpoints, activity logging, giới hạn config-driven
+- Viết **Phase 3 Code Guide** (`docs/code_guide/phase-3-workspace-module.md`, ~1442 dòng): hướng dẫn 7 bước implement Workspace Suite với giải thích "Tại sao" từng kỹ thuật (registerAs config, permission layer, WorkspaceContextInterceptor, custom decorators, DTOs, tests)
+- Cập nhật **Prisma Schema** cho Phase 3: chạy migration `workspace-suite-sync` — thêm enum `InvitationStatus` (PENDING/ACCEPTED/EXPIRED/REVOKED), enum `ActivityLogAction` (8 hành động), refactor model `WorkspaceInvite` với đầy đủ fields (status, token, revokedAt, acceptedAt, expiresAt)
+- Tạo **3 implementation plans** cho Phase 3:
+  - `2026-03-19-workspace-impl-update.md`: plan cập nhật schema + annotations code guide
+  - `2026-03-19-workspace-doc-refresh.md`: plan đồng bộ tài liệu PRD (8 files, 6 tasks)
+  - `2026-03-19-branch-structure-fix.md`: plan fix cấu trúc nhánh `main → develop → feature/*`
+- Bắt đầu **Phase 3 skeleton code** (Bước 1 + shared layer):
+  - `backend/src/common/config/workspace-limits.config.ts`: config giới hạn đọc từ `.env` dùng `registerAs` (maxWorkspacesPerUser, maxMembersPerWorkspace, inviteExpiryDays)
+  - `backend/src/types/express.d.ts`: TypeScript declaration augmentation — dạy TypeScript biết `request.workspaceContext` tồn tại
+  - `backend/src/workspace/types/workspace-context.type.ts`: type `WorkspaceContextPayload` (workspace + membership + permissions object)
+  - `backend/src/workspace/decorators/workspace.decorator.ts`: 2 custom decorators — `@WorkspaceContext` (lấy toàn bộ context) và `@WorkspaceId` (lấy workspace ID đã validate)
+
+**Công việc tuần tới:**
+- Hoàn thành Phase 3 skeleton code (Bước 3-7): WorkspacePermissionService, WorkspaceContextInterceptor, WorkspaceModule, WorkspaceMemberModule, WorkspaceInviteModule
+- Fix BUG-U-001: Multer fileFilter upload .txt trả HTTP 500 thay vì 400
+- Test Phase 2 hoàn chỉnh trên Hoppscotch (10 endpoints Auth + User)
+- Review PR của Vy (Workspace Module) khi sẵn sàng
+- Hoàn thiện nội dung Chương 2, Chương 10-11 cho báo cáo
