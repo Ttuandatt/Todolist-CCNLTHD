@@ -142,9 +142,10 @@ Dự án trong workspace, chứa các tasks.
 |--------|------|----------|---------|-------------|-------------|
 | `id` | VARCHAR(36) | ✅ | UUID gen | PK | Định danh duy nhất |
 | `workspace_id` | VARCHAR(36) | ✅ | - | FK → Workspace | Thuộc workspace nào |
+| `created_by_id` | VARCHAR(36) | ✅ | - | FK → User | Người tạo project |
 | `name` | VARCHAR(100) | ✅ | - | - | Tên project |
 | `description` | TEXT | ❌ | NULL | - | Mô tả project |
-| `color` | VARCHAR(7) | ❌ | '#6366F1' | - | Mã màu HEX |
+| `color` | VARCHAR(7) | ❌ | '#3B82F6' | - | Mã màu HEX |
 | `status` | ENUM | ✅ | 'ACTIVE' | - | ACTIVE, ARCHIVED |
 | `is_pinned` | BOOLEAN | ✅ | false | - | Đánh dấu ghim |
 | `created_at` | TIMESTAMP | ✅ | now() | - | Thời điểm tạo |
@@ -507,7 +508,7 @@ Bảng lưu access tokens đã bị vô hiệu hóa (Token Blacklist). Khi user 
 | 2 | OAuthAccount | 8 | Master |
 | 3 | Workspace | 6 | Master |
 | 4 | WorkspaceMember | 5 | Junction |
-| 5 | Project | 9 | Master |
+| 5 | Project | 10 | Master |
 | 6 | Task | 14 | Master (Core) |
 | 7 | TaskAssignment | 4 | Junction |
 | 8 | Subtask | 6 | Child |

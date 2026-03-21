@@ -20,12 +20,16 @@ Hệ thống được chia thành các module theo nguyên tắc phân tách tr�
 |--------|----------------|------------|
 | **Auth** | Đăng ký, đăng nhập, refresh token, logout, quên/đặt lại mật khẩu | Hoàn thành |
 | **User** | Xem/cập nhật profile, đổi mật khẩu, upload avatar | Hoàn thành |
-| **Workspace** | Tạo/quản lý workspace, mời thành viên, phân quyền | Sắp triển khai |
-| **Project** | Tạo/quản lý project trong workspace | Sắp triển khai |
-| **Task** | CRUD task, phân công, subtask, đổi trạng thái | Sắp triển khai |
-| **Comment** | Bình luận trên task, reply | Sắp triển khai |
-| **Notification** | Thông báo realtime | Sắp triển khai |
-| **Label** | Nhãn phân loại task | Sắp triển khai |
+| **Workspace** | Tạo/quản lý workspace, mời thành viên, phân quyền | Đang triển khai |
+| **Project** | Tạo/quản lý project trong workspace, archive/unarchive | Sắp triển khai |
+| **Label** | Nhãn phân loại dùng chung trong workspace | Sắp triển khai |
+| **Task** | CRUD task, phân công, subtask, filter/sort/pagination | Sắp triển khai |
+| **Comment** | Bình luận trên task, @mention | Sắp triển khai |
+| **Activity** | Ghi nhật ký hoạt động hệ thống (service-only) | Sắp triển khai |
+| **Events** | WebSocket Gateway, realtime rooms theo workspace/project/task | Sắp triển khai |
+| **Notification** | Thông báo in-app | Sắp triển khai |
+| **File** | Upload/download file đính kèm | Sắp triển khai |
+| **Search** | Dashboard cá nhân, tìm kiếm toàn hệ thống | Sắp triển khai |
 
 Trong phạm vi báo cáo này, chúng ta tập trung phân tích thiết kế toàn hệ thống và triển khai chi tiết hai module nền tảng: **Auth** và **User**. Hai module này cung cấp hạ tầng xác thực và quản lý người dùng — nền tảng mà mọi module khác đều phụ thuộc vào.
 
@@ -80,13 +84,56 @@ Sơ đồ cho thấy sự phân tách rõ ràng: năm use case của Auth Module
 ```mermaid
 graph TD
     AppModule["AppModule (Root)"]
-    AppModule --> ConfigModule["ConfigModule<br/>Biến môi trường (.env)"]
-    AppModule --> PrismaModule["PrismaModule [@Global]<br/>Kết nối PostgreSQL (dùng chung toàn app)"]
-    AppModule --> AuthModule["AuthModule<br/>Xác thực (register, login, JWT, ...)"]
-    AppModule --> UserModule["UserModule<br/>Quản lý hồ sơ người dùng"]
+
+    subgraph infra["Infrastructure"]
+        ConfigModule["ConfigModule<br/>biến môi trường (.env)"]
+        PrismaModule["PrismaModule @Global<br/>kết nối PostgreSQL (dùng chung toàn app)"]
+    end
+
+    subgraph business["Business Modules"]
+        AuthModule["AuthModule<br/>register · login · JWT · refresh · logout · blacklist"]
+        UserModule["UserModule<br/>profile · avatar · change-password"]
+        WorkspaceModule["WorkspaceModule<br/>CRUD · member management · invite system"]
+        ProjectModule["ProjectModule<br/>CRUD · archive / unarchive"]
+        LabelModule["LabelModule<br/>workspace labels (name + color)"]
+        TaskModule["TaskModule<br/>CRUD · subtasks · assign · filter · sort · pagination"]
+        CommentModule["CommentModule<br/>comments · @mention"]
+        ActivityModule["ActivityModule<br/>activity log (service-only)"]
+        NotificationModule["NotificationModule<br/>in-app notifications"]
+        FileModule["FileModule<br/>file attachments"]
+        SearchModule["SearchModule<br/>dashboard · my-tasks · full-text search"]
+    end
+
+    subgraph realtime["Realtime"]
+        EventsModule["EventsModule<br/>WebSocket Gateway (Socket.io)<br/>rooms: workspace · project · task · user"]
+    end
+
+    AppModule --> ConfigModule
+    AppModule --> PrismaModule
+    AppModule --> AuthModule
+    AppModule --> UserModule
+    AppModule --> WorkspaceModule
+    AppModule --> ProjectModule
+    AppModule --> LabelModule
+    AppModule --> TaskModule
+    AppModule --> CommentModule
+    AppModule --> ActivityModule
+    AppModule --> EventsModule
+    AppModule --> NotificationModule
+    AppModule --> FileModule
+    AppModule --> SearchModule
+
+    ProjectModule -.->|imports| WorkspaceModule
+    LabelModule -.->|imports| WorkspaceModule
+    TaskModule -.->|imports| ProjectModule
+    CommentModule -.->|imports| TaskModule
+    NotificationModule -.->|imports| EventsModule
+    SearchModule -.->|imports| TaskModule
 ```
 
-Mỗi Feature Module (Auth, User) tuân theo cấu trúc ba tầng nhất quán:
+Sơ đồ thể hiện toàn bộ 14 module của hệ thống, phân thành ba nhóm: **Infrastructure** (cơ sở hạ tầng dùng chung), **Business Modules** (nghiệp vụ), và **Realtime** (xử lý kết nối thời gian thực). Mũi tên liền (`→`) thể hiện AppModule đăng ký module vào DI container; mũi tên đứt (`⇢ imports`) thể hiện quan hệ phụ thuộc giữa các module — ví dụ TaskModule cần import ProjectModule để kiểm tra quyền truy cập workspace.
+
+Mỗi Feature Module tuân theo cấu trúc ba tầng nhất quán:
 
 ```mermaid
 graph LR
@@ -101,33 +148,109 @@ Cấu trúc ba tầng này phản ánh nguyên tắc **Separation of Concerns**:
 
 ```mermaid
 graph TB
-    subgraph AppModule
+    subgraph AppModule["AppModule (Root)"]
         ConfigModule
         GUARD["APP_GUARD: JwtAuthGuard"]
-
-        subgraph PrismaModule ["PrismaModule [@Global]"]
-            PrismaService
-        end
-
-        subgraph AuthModule
-            AuthService
-            JwtStrategy
-        end
-
-        subgraph UserModule
-            UserService
-            MulterModule
-        end
     end
 
+    subgraph PrismaModule["PrismaModule @Global"]
+        PrismaService
+    end
+
+    subgraph AuthModule
+        AuthService
+        JwtStrategy
+    end
+
+    subgraph UserModule
+        UserService
+        MulterModule
+    end
+
+    subgraph WorkspaceModule
+        WorkspaceService
+        WorkspacePermissionService
+        WorkspaceContextInterceptor
+    end
+
+    subgraph ProjectModule
+        ProjectService
+    end
+
+    subgraph LabelModule
+        LabelService
+    end
+
+    subgraph TaskModule
+        TaskService
+    end
+
+    subgraph CommentModule
+        CommentService
+    end
+
+    subgraph ActivityModule
+        ActivityService
+    end
+
+    subgraph EventsModule
+        EventsGateway
+    end
+
+    subgraph NotificationModule
+        NotificationService
+    end
+
+    subgraph FileModule
+        FileService
+    end
+
+    subgraph SearchModule
+        SearchService
+    end
+
+    %% PrismaService — inject vào mọi service
     AuthService -->|inject| PrismaService
     JwtStrategy -->|inject| PrismaService
     UserService -->|inject| PrismaService
-    AuthModule -->|exports AuthService| UserModule
+    WorkspaceService -->|inject| PrismaService
+    WorkspacePermissionService -->|inject| PrismaService
+    ProjectService -->|inject| PrismaService
+    LabelService -->|inject| PrismaService
+    TaskService -->|inject| PrismaService
+    CommentService -->|inject| PrismaService
+    ActivityService -->|inject| PrismaService
+    NotificationService -->|inject| PrismaService
+    FileService -->|inject| PrismaService
+    SearchService -->|inject| PrismaService
+
+    %% Global Guard
     GUARD -->|uses| JwtStrategy
+
+    %% Module exports / imports
+    AuthModule -->|exports AuthService| UserModule
+    WorkspaceModule -->|exports WorkspacePermissionService| ProjectModule
+    WorkspaceModule -->|exports WorkspacePermissionService| LabelModule
+    ProjectModule -->|exports ProjectService| TaskModule
+
+    %% Cross-module service injection
+    ActivityService -.->|injected into| WorkspaceService
+    ActivityService -.->|injected into| TaskService
+    ActivityService -.->|injected into| CommentService
+    EventsGateway -.->|injected into| TaskService
+    EventsGateway -.->|injected into| CommentService
+    EventsGateway -.->|injected into| NotificationService
 ```
 
-Sơ đồ trên cho thấy mối quan hệ phụ thuộc rõ ràng. `PrismaModule` được đánh dấu `@Global()` nên mọi module đều có thể inject `PrismaService` mà không cần khai báo import. `AuthModule` export `AuthService` để các module khác sử dụng khi cần logic xác thực. `JwtAuthGuard` được đăng ký làm Global Guard tại `AppModule`, bảo vệ mọi endpoint mặc định — các endpoint công khai phải được đánh dấu tường minh bằng decorator `@Public()`.
+Sơ đồ cho thấy ba nhóm phụ thuộc chính trong hệ thống.
+
+Nhóm thứ nhất là **PrismaService** — được đánh dấu `@Global()` nên mọi service đều inject trực tiếp mà không cần khai báo import trong từng module. Đây là node trung tâm mà toàn bộ tầng Service đều phụ thuộc vào để truy cập database.
+
+Nhóm thứ hai là **module exports/imports** (mũi tên liền): `AuthModule` export `AuthService`; `WorkspaceModule` export `WorkspacePermissionService` để `ProjectModule` và `LabelModule` kiểm tra quyền theo workspace; `ProjectModule` export `ProjectService` để `TaskModule` xác minh task thuộc đúng project. Thứ tự phụ thuộc này phản ánh dependency chain nghiệp vụ: Workspace → Project → Task.
+
+Nhóm thứ ba là **cross-module service injection** (mũi tên đứt): `ActivityService` được inject vào `WorkspaceService`, `TaskService`, và `CommentService` để ghi nhật ký hoạt động tự động mỗi khi có thao tác nghiệp vụ quan trọng. Tương tự, `EventsGateway` được inject vào `TaskService`, `CommentService`, và `NotificationService` để phát sự kiện realtime qua WebSocket ngay tại tầng Service — không cần controller gọi thêm.
+
+`JwtAuthGuard` được đăng ký làm Global Guard tại `AppModule` thông qua `APP_GUARD`, bảo vệ mọi endpoint mặc định. Các endpoint công khai (register, login, accept-invite) phải được đánh dấu tường minh bằng decorator `@Public()` để bypass guard.
 
 ---
 

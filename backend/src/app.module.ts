@@ -12,6 +12,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
+import { ProjectModule } from './modules/project/project.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
     AuthModule,
     PrismaModule,
     UserModule,
-    WorkspaceModule
+    WorkspaceModule,
+    ProjectModule,
   ],
   providers: [
     {
