@@ -26,8 +26,8 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard
-    }
+      useClass: JwtAuthGuard,
+    },
     // Cách đăng ký Global Guard qua DI:
     //   provide: APP_GUARD = bảo NestJS "đây là guard global"
     //   useClass: JwtAuthGuard = dùng class JwtAuthGuard
@@ -35,7 +35,6 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
     // Tại sao không dùng app.useGlobalGuards() trong main.ts?
     // → Vì JwtAuthGuard cần inject Reflector (để đọc @Public() metadata)
     // → app.useGlobalGuards() không hỗ trợ DI, chỉ APP_GUARD mới hỗ trợ
-  ]
+  ],
 })
-
-export class AppModule { }
+export class AppModule {}

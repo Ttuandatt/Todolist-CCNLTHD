@@ -9,8 +9,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-
-
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
@@ -50,14 +48,14 @@ async function bootstrap() {
     .setTitle('TodoList Collaboration API')
     .setDescription('API documentation cho dự án TodoList Collaboration')
     .setVersion('1.0')
-    .addBearerAuth()   // Thêm nút "Authorize" trên Swagger UI để nhập JWT token
+    .addBearerAuth() // Thêm nút "Authorize" trên Swagger UI để nhập JWT token
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/'
+    prefix: '/uploads/',
   });
   // useStaticAssets(folder, options):
   //   - Tham số 1: đường dẫn tuyệt đối đến folder chứa static files.
