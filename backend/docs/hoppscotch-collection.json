@@ -625,6 +625,208 @@
                     }
                 }
             }
+        },
+        "/workspaces": {
+            "get": {
+                "tags": ["Workspace"],
+                "summary": "Lấy danh sách workspace mà User tham gia",
+                "security": [{"BearerAuth": []}],
+                "responses": {
+                    "200": { "description": "Thành công" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" }
+                }
+            },
+            "post": {
+                "tags": ["Workspace"],
+                "summary": "Tạo workspace mới",
+                "security": [{"BearerAuth": []}],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "description": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Tạo workspace thành công" },
+                    "400": { "description": "Lỗi validation" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" }
+                }
+            }
+        },
+        "/workspaces/{id}": {
+            "get": {
+                "tags": ["Workspace"],
+                "summary": "Lấy chi tiết 1 Workspace",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "Thành công" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Bạn không có quyền truy cập workspace này" },
+                    "404": { "description": "Workspace không tồn tại" }
+                }
+            },
+            "patch": {
+                "tags": ["Workspace"],
+                "summary": "Sửa tên hoặc mô tả Workspace",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "description": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Cập nhật thành công" },
+                    "400": { "description": "Lỗi validation" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Chỉ Owner hoặc Admin mới được sửa workspace" },
+                    "404": { "description": "Workspace không tồn tại" }
+                }
+            },
+            "delete": {
+                "tags": ["Workspace"],
+                "summary": "Xóa Workspace (chỉ Owner)",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "Xóa thành công" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Chỉ Owner mới có quyền xóa workspace này" },
+                    "404": { "description": "Workspace không tồn tại" }
+                }
+            }
+        },
+        "/workspaces/{id}/invite": {
+            "post": {
+                "tags": ["Workspace"],
+                "summary": "Tạo Token lời mời thành viên",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": { "type": "string" },
+                                    "role": { "type": "string", "enum": ["ADMIN", "MEMBER"] }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Tạo token mời thành công" },
+                    "400": { "description": "Lỗi validation" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Chỉ Owner/Admin mới được mời thành viên | Người dùng đã là thành viên" },
+                    "404": { "description": "Workspace hoặc email người dùng không tồn tại" }
+                }
+            }
+        },
+        "/workspaces/accept-invite/{token}": {
+            "post": {
+                "tags": ["Workspace"],
+                "summary": "Chấp nhận lời mời tham gia bằng Token",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "201": { "description": "Tham gia thành công" },
+                    "401": { "description": "Token đăng nhập không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Token mời đã sử dụng/hết hạn | Email không khớp với lời mời" },
+                    "404": { "description": "Token mời không tồn tại hoặc không hợp lệ" }
+                }
+            }
+        },
+        "/workspaces/{id}/members": {
+            "get": {
+                "tags": ["Workspace"],
+                "summary": "Lấy danh sách thành viên trong Workspace",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "Thành công" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Bạn không phải thành viên workspace này" },
+                    "404": { "description": "Workspace không tồn tại" }
+                }
+            }
+        },
+        "/workspaces/{id}/members/{userId}": {
+            "patch": {
+                "tags": ["Workspace"],
+                "summary": "Đổi quyền thành viên (MEMBER lên ADMIN)",
+                "security": [{"BearerAuth": []}],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": { "role": { "type": "string", "enum": ["ADMIN", "MEMBER"] } }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Đổi quyền thành công" },
+                    "400": { "description": "Lỗi validation" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Chỉ Owner mới có quyền đổi Role | Không tự đổi quyền chính mình" },
+                    "404": { "description": "Thành viên không tồn tại trong workspace" }
+                }
+            },
+            "delete": {
+                "tags": ["Workspace"],
+                "summary": "Đuổi thành viên ra khỏi nhóm",
+                "security": [{"BearerAuth": []}],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "Xóa thành viên thành công" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Không có quyền đuổi | Admin không đuổi được Admin | Không đuổi được Owner" },
+                    "404": { "description": "Thành viên không tồn tại trong workspace" }
+                }
+            }
+        },
+        "/workspaces/{id}/leave": {
+            "delete": {
+                "tags": ["Workspace"],
+                "summary": "Tự rời khỏi Workspace",
+                "security": [{"BearerAuth": []}],
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "Đã rời khỏi workspace" },
+                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
+                    "403": { "description": "Owner không thể tự rời nhóm, hãy xóa nhóm hoặc nhường quyền" },
+                    "404": { "description": "Bạn không nằm trong workspace này" }
+                }
+            }
         }
     },
     "components": {
