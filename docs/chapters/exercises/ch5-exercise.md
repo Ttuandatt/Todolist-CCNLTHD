@@ -1,27 +1,26 @@
-# Chương 5 — Bài tập ứng dụng: Kết nối PostgreSQL và CRUD với Prisma
+# Chương 5 — Bài tập ứng dụng: Kết nối Database và CRUD User với Prisma
 
 ## 1. Mục tiêu
 
-Bài tập này giúp người đọc vận dụng kiến thức về Prisma ORM đã học trong Chương 5 để kết nối ứng dụng NestJS với cơ sở dữ liệu PostgreSQL thực tế. Sau khi hoàn thành, người đọc sẽ:
+Vận dụng kiến thức về Prisma ORM đã học trong Chương 5 để thay thế dữ liệu in-memory bằng cơ sở dữ liệu PostgreSQL thực tế. Sau khi hoàn thành, người đọc sẽ:
 
-- Biết cách cài đặt và cấu hình Prisma trong dự án NestJS.
-- Thành thạo quy trình định nghĩa model, chạy migration, và generate Prisma Client.
-- Tích hợp Prisma vào kiến trúc NestJS thông qua PrismaService và PrismaModule.
-- Thực hiện đầy đủ 5 thao tác CRUD (Create, Read All, Read One, Update, Delete) với database thực.
+- Biết cách cài đặt, cấu hình Prisma và định nghĩa model trong schema.
+- Thành thạo quy trình migration: từ schema → SQL → database.
+- Tích hợp Prisma vào kiến trúc NestJS thông qua PrismaService (injectable, lifecycle hooks) và PrismaModule (global).
+- Thực hiện các thao tác CRUD với database thực, sử dụng Prisma Client type-safe.
 
 ## 2. Mô tả bài tập
 
-Tiếp tục từ dự án `student-manager` ở Chương 4, thay thế mảng in-memory bằng cơ sở dữ liệu PostgreSQL thực tế. Đồng thời bổ sung thêm hai endpoint: cập nhật (PATCH) và xóa (DELETE) sinh viên.
+Tiếp tục từ dự án `todolist-collaboration` ở Chương 4, thay thế mảng in-memory trong UserService bằng PostgreSQL thông qua Prisma ORM.
 
 **Yêu cầu cụ thể:**
 
 1. Cài đặt Prisma và khởi tạo cấu hình.
-2. Định nghĩa model `Student` trong file `schema.prisma` với các trường: `id` (UUID, tự sinh), `name`, `studentCode` (unique), `major`, `gpa` (Float), `createdAt`, `updatedAt`.
-3. Chạy migration để tạo bảng trong database.
-4. Tạo `PrismaService` và `PrismaModule` (global).
-5. Refactor `StudentService`: thay toàn bộ logic mảng in-memory bằng Prisma Client queries.
-6. Bổ sung hai endpoint mới trong `StudentController`: `PATCH /students/:id` và `DELETE /students/:id`.
-7. Kiểm tra toàn bộ 5 thao tác CRUD bằng Hoppscotch và xem dữ liệu trên Prisma Studio.
+2. Định nghĩa model `User` trong file `schema.prisma`.
+3. Tạo `PrismaService` với lifecycle hooks (`onModuleInit`, `onModuleDestroy`).
+4. Tạo `PrismaModule` với decorator `@Global()`.
+5. Refactor `UserService`: thay toàn bộ logic mảng in-memory bằng Prisma Client queries.
+6. Kiểm tra bằng Hoppscotch và Prisma Studio.
 
 ## 3. Code minh họa
 
@@ -33,17 +32,15 @@ npm install @prisma/client
 npx prisma init
 ```
 
-Lệnh `prisma init` tạo thư mục `prisma/` chứa file `schema.prisma` và thêm biến `DATABASE_URL` vào file `.env`.
-
 Cấu hình kết nối database trong file `.env`:
 
 ```env
-DATABASE_URL="postgresql://admin:secretpassword@localhost:5432/student_manager?schema=public"
+DATABASE_URL="postgresql://admin:secretpassword@localhost:5432/todolist_collaboration?schema=public"
 ```
 
 > (Ảnh chụp: Terminal hiển thị kết quả `npx prisma init` thành công)
 
-### Bước 2: Định nghĩa Model Student
+### Bước 2: Định nghĩa Model User
 
 ```prisma
 // prisma/schema.prisma
@@ -56,56 +53,91 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student {
-  id          String   @id @default(uuid())
-  name        String
-  studentCode String   @unique
-  major       String
-  gpa         Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password      String
+  name          String
+  displayName   String?
+  avatar        String?
+  bio           String?
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  @@map("students")
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
 }
 ```
 
 Giải thích các attribute:
-- `@id @default(uuid())` — Đánh dấu primary key, tự động sinh UUID khi tạo bản ghi mới.
-- `@unique` — Đảm bảo mã sinh viên (`studentCode`) không bị trùng lặp.
-- `@default(now())` — Tự động ghi thời gian tạo bản ghi.
-- `@updatedAt` — Tự động cập nhật timestamp mỗi khi bản ghi được sửa đổi.
-- `@@map("students")` — Đặt tên bảng trong database là `students` thay vì `Student`.
+- `@id @default(uuid())` — Primary key, tự động sinh UUID.
+- `@unique` — Email không được trùng lặp trong hệ thống.
+- `String?` — Dấu `?` đánh dấu trường là optional (có thể null).
+- `@default(ACTIVE)` — Trạng thái mặc định khi tạo user mới.
+- `@updatedAt` — Tự động cập nhật timestamp khi record bị sửa đổi.
+- `@@map("users")` — Tên bảng trong database là `users` (snake_case convention).
+- `enum UserStatus` — Giới hạn trạng thái chỉ nhận 3 giá trị hợp lệ.
 
-> (Ảnh chụp: File schema.prisma hoàn chỉnh trong IDE)
-
-### Bước 3: Chạy Migration
+Chạy migration:
 
 ```bash
-npx prisma migrate dev --name init_student
+npx prisma migrate dev --name init_user
 ```
-
-Lệnh này thực hiện ba bước: so sánh schema với database, tạo file migration SQL, và apply migration vào database. Sau khi chạy xong, Prisma Client cũng được tự động regenerate.
 
 > (Ảnh chụp: Terminal hiển thị migration thành công — "Your database is now in sync with your schema")
 
-### Bước 4: Tạo PrismaService và PrismaModule
+### Bước 3: Tạo PrismaService với Lifecycle Hooks
+
+Đây là file thực tế từ dự án TodoList Collaboration:
 
 ```typescript
 // src/prisma/prisma.service.ts
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(PrismaService.name);
+
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      this.logger.log('Database connected successfully');
+    } catch (error) {
+      this.logger.error('Failed to connect to database', error);
+      throw error;
+    }
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
+    this.logger.log('Database disconnected');
   }
 }
 ```
+
+Điểm cần lưu ý:
+- `extends PrismaClient` — Kế thừa tất cả methods query database (`this.user.findMany()`, `this.user.create()`, ...). Không cần tạo instance riêng.
+- `implements OnModuleInit, OnModuleDestroy` — Móc vào vòng đời NestJS: mở kết nối khi module khởi tạo, đóng kết nối khi app shutdown.
+- Tại sao không gọi `$connect()` trong constructor? Vì constructor không hỗ trợ `async`. Lifecycle hooks là nơi đúng để thực hiện các thao tác bất đồng bộ.
+
+### Bước 4: Tạo PrismaModule (Global)
 
 ```typescript
 // src/prisma/prisma.module.ts
@@ -120,185 +152,138 @@ import { PrismaService } from './prisma.service';
 export class PrismaModule {}
 ```
 
-Import `PrismaModule` vào `AppModule`:
+- `@Global()` — PrismaService sẽ available ở mọi module trong ứng dụng mà không cần import `PrismaModule` lặp lại. Chỉ cần import một lần ở `AppModule`.
+- `exports: [PrismaService]` — Bắt buộc. Nếu thiếu dòng này, dù có `@Global()` thì module khác vẫn không thể inject `PrismaService`.
+
+Import vào `AppModule`:
 
 ```typescript
 // src/app.module.ts
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
-import { StudentModule } from './student/student.module';
+import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [PrismaModule, StudentModule],
+  imports: [PrismaModule, UserModule],
 })
 export class AppModule {}
 ```
 
-Nhờ decorator `@Global()`, `PrismaService` sẽ tự động available ở mọi module trong ứng dụng mà không cần import `PrismaModule` lặp lại.
+### Bước 5: Refactor UserService — Thay in-memory bằng Prisma
 
-### Bước 5: Refactor StudentService — Thay in-memory bằng Prisma
+Dưới đây là `UserService` thực tế từ dự án, sử dụng Prisma Client thay cho mảng in-memory:
 
 ```typescript
-// src/student/student.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/user/user.service.ts
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Student } from '@prisma/client';
 
 @Injectable()
-export class StudentService {
-  constructor(private readonly prisma: PrismaService) {}
+export class UserService {
+  constructor(private prisma: PrismaService) {}
 
-  async findAll(): Promise<Student[]> {
-    return this.prisma.student.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+  // Cấu hình select — chỉ trả về các trường an toàn (KHÔNG trả password)
+  private readonly profileSelect = {
+    id: true,
+    email: true,
+    displayName: true,
+    avatar: true,
+    status: true,
+    bio: true,
+    emailVerified: true,
+    lastLoginAt: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
 
-  async findOne(id: string): Promise<Student> {
-    const student = await this.prisma.student.findUnique({
-      where: { id },
+  // Lấy thông tin hồ sơ người dùng
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: this.profileSelect,
     });
-    if (!student) {
-      throw new NotFoundException(`Không tìm thấy sinh viên với ID ${id}`);
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    return student;
+    return user;
   }
 
-  async create(data: { name: string; studentCode: string; major: string; gpa: number }): Promise<Student> {
-    return this.prisma.student.create({ data });
-  }
+  // Cập nhật thông tin hồ sơ
+  async updateProfile(userId: string, dto: { displayName?: string; bio?: string }) {
+    if (!dto.displayName && !dto.bio) {
+      throw new BadRequestException(
+        'At least one field (displayName or bio) must be provided for update',
+      );
+    }
 
-  async update(id: string, data: { name?: string; major?: string; gpa?: number }): Promise<Student> {
-    await this.findOne(id); // Kiểm tra tồn tại trước
-    return this.prisma.student.update({
-      where: { id },
-      data,
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.displayName ? { displayName: dto.displayName } : {}),
+        ...(dto.bio ? { bio: dto.bio } : {}),
+      },
+      select: this.profileSelect,
     });
-  }
-
-  async remove(id: string): Promise<Student> {
-    await this.findOne(id);
-    return this.prisma.student.delete({
-      where: { id },
-    });
+    return updated;
   }
 }
 ```
 
-So sánh với phiên bản Chương 4: toàn bộ logic mảng `this.students` đã được thay bằng các Prisma Client methods (`findMany`, `findUnique`, `create`, `update`, `delete`). Các methods giờ đây là `async` vì thao tác database là bất đồng bộ. Kiểu `Student` được import trực tiếp từ `@prisma/client` — đây là type được Prisma auto-generate từ schema, đảm bảo type-safe tuyệt đối.
+So sánh với phiên bản Chương 4:
+- `this.users.find()` → `this.prisma.user.findUnique()` (query database thực).
+- Trực tiếp mutate object → `this.prisma.user.update()` (cập nhật database).
+- Các methods giờ là `async` vì thao tác database là bất đồng bộ.
+- Option `select` chỉ trả về các trường được liệt kê — đặc biệt quan trọng để **không bao giờ trả password** về cho client.
+- Kiểu `as const` giúp TypeScript hiểu rằng đây là object bất biến, hỗ trợ type inference chính xác hơn.
 
-### Bước 6: Cập nhật StudentController
+### Bước 6: Kiểm tra bằng Hoppscotch
 
-```typescript
-// src/student/student.controller.ts
-import { Controller, Get, Post, Patch, Delete, Param, Body, ParseUUIDPipe } from '@nestjs/common';
-import { StudentService } from './student.service';
-import { Student } from '@prisma/client';
-
-@Controller('students')
-export class StudentController {
-  constructor(private readonly studentService: StudentService) {}
-
-  @Get()
-  findAll(): Promise<Student[]> {
-    return this.studentService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Student> {
-    return this.studentService.findOne(id);
-  }
-
-  @Post()
-  create(
-    @Body() data: { name: string; studentCode: string; major: string; gpa: number },
-  ): Promise<Student> {
-    return this.studentService.create(data);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() data: { name?: string; major?: string; gpa?: number },
-  ): Promise<Student> {
-    return this.studentService.update(id, data);
-  }
-
-  @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<Student> {
-    return this.studentService.remove(id);
-  }
-}
-```
-
-Thay đổi so với Chương 4: `ParseIntPipe` được thay bằng `ParseUUIDPipe` vì `id` giờ là UUID string thay vì số nguyên. Thêm hai endpoint mới `PATCH` và `DELETE` cho chức năng cập nhật và xóa.
-
-### Bước 7: Kiểm tra bằng Hoppscotch
-
-**Test 1 — Tạo sinh viên mới (CREATE):**
-- **Method:** POST
-- **URL:** `http://localhost:3000/students`
-- **Body:**
-```json
-{
-  "name": "Nguyễn Văn A",
-  "studentCode": "SV001",
-  "major": "Công nghệ thông tin",
-  "gpa": 3.5
-}
-```
-
-> (Ảnh chụp: Hoppscotch POST — response 201 với object sinh viên bao gồm UUID id và timestamps)
-
-**Test 2 — Lấy danh sách (READ ALL):**
-- **Method:** GET
-- **URL:** `http://localhost:3000/students`
-
-> (Ảnh chụp: Hoppscotch GET — response 200 với mảng sinh viên)
-
-**Test 3 — Lấy chi tiết (READ ONE):**
-- **Method:** GET
-- **URL:** `http://localhost:3000/students/{id-vừa-tạo}`
-
-> (Ảnh chụp: Hoppscotch GET by ID — response 200 với chi tiết sinh viên)
-
-**Test 4 — Cập nhật GPA (UPDATE):**
-- **Method:** PATCH
-- **URL:** `http://localhost:3000/students/{id}`
-- **Body:**
-```json
-{
-  "gpa": 3.8
-}
-```
-
-> (Ảnh chụp: Hoppscotch PATCH — response 200 với GPA đã cập nhật, updatedAt thay đổi)
-
-**Test 5 — Xóa sinh viên (DELETE):**
-- **Method:** DELETE
-- **URL:** `http://localhost:3000/students/{id}`
-
-> (Ảnh chụp: Hoppscotch DELETE — response 200 trả về object sinh viên đã xóa)
-
-### Bước 8: Xem dữ liệu trên Prisma Studio
+Trước tiên, cần tạo dữ liệu test. Mở Prisma Studio:
 
 ```bash
 npx prisma studio
 ```
 
-Truy cập `http://localhost:5555` để mở Prisma Studio — công cụ GUI cho phép browse, filter, và edit dữ liệu trực tiếp trong trình duyệt.
+Truy cập `http://localhost:5555`, vào bảng `users`, tạo một bản ghi mới với các trường: email, password (giá trị bất kỳ), name, displayName.
 
-> (Ảnh chụp: Prisma Studio hiển thị bảng students với các bản ghi đã tạo)
+> (Ảnh chụp: Prisma Studio hiển thị bảng users với bản ghi vừa tạo)
+
+**Test 1 — Lấy hồ sơ người dùng (READ):**
+- **Method:** GET
+- **URL:** `http://localhost:3000/users/{id-từ-prisma-studio}`
+- **Expected:** Object user với các trường đã select (không có password).
+
+> (Ảnh chụp: Hoppscotch GET — response 200, object user không chứa trường password)
+
+**Test 2 — Cập nhật hồ sơ (UPDATE):**
+- **Method:** PATCH
+- **URL:** `http://localhost:3000/users/{id}`
+- **Body:**
+```json
+{
+  "displayName": "Dat Updated",
+  "bio": "NestJS Developer"
+}
+```
+
+> (Ảnh chụp: Hoppscotch PATCH — response 200, displayName và bio đã cập nhật, updatedAt thay đổi)
+
+**Test 3 — Xem dữ liệu đã cập nhật trên Prisma Studio:**
+
+> (Ảnh chụp: Prisma Studio hiển thị bản ghi user với displayName và bio mới)
 
 ## 4. Kết quả đạt được
 
-Sau khi hoàn thành bài tập, chúng ta đã:
+Sau khi hoàn thành bài tập:
 
-- Cài đặt và cấu hình Prisma ORM thành công trong dự án NestJS.
-- Định nghĩa model `Student` với đầy đủ các field types, attributes, và constraints.
-- Tích hợp Prisma vào kiến trúc NestJS thông qua `PrismaService` (injectable) và `PrismaModule` (global).
-- Thực hiện thành công đầy đủ 5 thao tác CRUD với cơ sở dữ liệu PostgreSQL thực tế.
-- Kiểm tra dữ liệu trực quan qua Prisma Studio.
-- Dữ liệu giờ đây được lưu trữ bền vững — không bị mất khi restart ứng dụng như phiên bản in-memory ở Chương 4.
+- Cài đặt và cấu hình Prisma ORM, định nghĩa model `User` với đầy đủ field types, attributes, và enum.
+- Tạo `PrismaService` tích hợp lifecycle hooks — tự động mở/đóng kết nối database đúng thời điểm.
+- Tạo `PrismaModule` với `@Global()` — PrismaService available ở mọi nơi trong ứng dụng.
+- Refactor thành công `UserService` từ in-memory sang Prisma Client — dữ liệu giờ đây được lưu trữ bền vững trong PostgreSQL.
+- Option `select` đảm bảo không bao giờ trả trường nhạy cảm (password) về cho client.
 
-Tuy nhiên, API hiện tại chưa có cơ chế kiểm tra tính hợp lệ của dữ liệu đầu vào (ví dụ: GPA phải nằm trong khoảng 0–4, mã sinh viên không được để trống). Chương tiếp theo sẽ giải quyết vấn đề này bằng Pipes và Interceptors.
+Tuy nhiên, API hiện tại chưa có cơ chế kiểm tra tính hợp lệ của dữ liệu đầu vào (ví dụ: displayName không quá 50 ký tự) và response chưa được chuẩn hóa format. Chương tiếp theo sẽ giải quyết hai vấn đề này bằng Pipes và Interceptors.
