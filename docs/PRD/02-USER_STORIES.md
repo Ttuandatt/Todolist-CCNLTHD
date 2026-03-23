@@ -225,9 +225,9 @@
 |------------|---------|
 | **ID** | US-3.1 |
 | **Title** | Tạo project mới trong workspace |
-| **Actor** | Owner, Admin |
-| **Story** | As an Owner/Admin, I want to create a new project, so that I can organize related tasks together. |
-| **Story (VN)** | Với vai trò Owner/Admin, tôi muốn tạo project mới, để tổ chức các task liên quan lại với nhau. |
+| **Actor** | Member |
+| **Story** | As a Member, I want to create a new project, so that I can organize related tasks together. |
+| **Story (VN)** | Với vai trò Member, tôi muốn tạo project mới, để tổ chức các task liên quan lại với nhau. |
 | **Priority** | High |
 | **Acceptance Criteria** | - Nhập tên project (bắt buộc)<br>- Nhập mô tả (tùy chọn)<br>- Chọn màu/icon (tùy chọn)<br>- Project thuộc về workspace hiện tại |
 
@@ -251,9 +251,9 @@
 |------------|---------|
 | **ID** | US-3.3 |
 | **Title** | Chỉnh sửa thông tin project |
-| **Actor** | Owner, Admin |
-| **Story** | As an Owner/Admin, I want to edit project details, so that the information stays current. |
-| **Story (VN)** | Với vai trò Owner/Admin, tôi muốn chỉnh sửa thông tin project, để thông tin luôn cập nhật. |
+| **Actor** | Member |
+| **Story** | As a Member, I want to edit project details, so that the information stays current. |
+| **Story (VN)** | Với vai trò Member, tôi muốn chỉnh sửa thông tin project, để thông tin luôn cập nhật. |
 | **Priority** | Medium |
 | **Acceptance Criteria** | - Đổi tên project<br>- Đổi mô tả<br>- Đổi màu/icon |
 

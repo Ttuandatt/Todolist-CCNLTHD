@@ -518,6 +518,11 @@ Authorization: Bearer <token>
   "color": "#6366F1",
   "status": "ACTIVE",
   "isPinned": false,
+  "createdBy": {
+    "id": "uuid",
+    "name": "User Name",
+    "avatar": "url"
+  },
   "workspace": { ... },
   "taskCountByStatus": {
     "TODO": 5,
@@ -556,6 +561,25 @@ Authorization: Bearer <token>
 POST /projects/:id/archive
 POST /projects/:id/unarchive
 Authorization: Bearer <token>
+```
+
+---
+
+### 5.7. Pin/Unpin Project
+
+```http
+POST /projects/:id/pin
+POST /projects/:id/unpin
+Authorization: Bearer <token>
+```
+
+**Response 200:**
+```json
+{
+  "id": "uuid",
+  "name": "Project Name",
+  "isPinned": true
+}
 ```
 
 ---
@@ -1001,11 +1025,11 @@ Authorization: Bearer <token>
 | Auth | 7 | POST, GET |
 | User | 4 | GET, PATCH, POST |
 | Workspace | 9 | GET, POST, PATCH, DELETE |
-| Project | 6 | GET, POST, PATCH, DELETE |
+| Project | 7 | GET, POST, PATCH, DELETE |
 | Task | 10 | GET, POST, PATCH, DELETE |
 | Subtask | 3 | POST, PATCH, DELETE |
 | Comment | 4 | GET, POST, PATCH, DELETE |
 | Notification | 4 | GET, PATCH, POST |
 | Label | 4 | GET, POST, PATCH, DELETE |
 | Attachment | 2 | POST, DELETE |
-| **Total** | **53** | |
+| **Total** | **54** | |
