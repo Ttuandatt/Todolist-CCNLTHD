@@ -46,7 +46,7 @@ services:
       POSTGRES_PASSWORD: secretpassword
       POSTGRES_DB: todolist_collaboration
     ports:
-      - '5432:5432'
+      - '5435:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -89,7 +89,7 @@ Truy cập Hoppscotch tại `https://hoppscotch.io`, gửi request:
 Sau khi hoàn thành bài tập:
 
 - Tạo thành công dự án NestJS `todolist-collaboration` bằng CLI.
-- Khởi chạy PostgreSQL trên Docker, sẵn sàng kết nối ở cổng 5432.
+- Khởi chạy PostgreSQL trên Docker, sẵn sàng kết nối ở cổng 5435 (host) → 5432 (container).
 - Ứng dụng NestJS hoạt động ở chế độ development với hot-reload.
 - Xác nhận endpoint mặc định phản hồi đúng qua Hoppscotch.
 
