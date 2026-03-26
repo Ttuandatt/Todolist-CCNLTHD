@@ -20,58 +20,117 @@ Hệ thống được chia thành các module theo nguyên tắc phân tách tr�
 |--------|----------------|------------|
 | **Auth** | Đăng ký, đăng nhập, refresh token, logout, quên/đặt lại mật khẩu | Hoàn thành |
 | **User** | Xem/cập nhật profile, đổi mật khẩu, upload avatar | Hoàn thành |
-| **Workspace** | Tạo/quản lý workspace, mời thành viên, phân quyền | Đang triển khai |
-| **Project** | Tạo/quản lý project trong workspace, archive/unarchive | Sắp triển khai |
+| **Workspace** | Tạo/quản lý workspace, mời thành viên, phân quyền | Hoàn thành |
+| **Project** | Tạo/quản lý project trong workspace, archive/unarchive, pin | Hoàn thành |
 | **Label** | Nhãn phân loại dùng chung trong workspace | Sắp triển khai |
 | **Task** | CRUD task, phân công, subtask, filter/sort/pagination | Sắp triển khai |
-| **Comment** | Bình luận trên task, @mention | Sắp triển khai |
+| **Comment** | Bình luận trên task | Sắp triển khai |
 | **Activity** | Ghi nhật ký hoạt động hệ thống (service-only) | Sắp triển khai |
 | **Events** | WebSocket Gateway, realtime rooms theo workspace/project/task | Sắp triển khai |
 | **Notification** | Thông báo in-app | Sắp triển khai |
-| **File** | Upload/download file đính kèm | Sắp triển khai |
+| **File** | Upload/download file đính kèm (tối đa 50MB) | Sắp triển khai |
 | **Search** | Dashboard cá nhân, tìm kiếm toàn hệ thống | Sắp triển khai |
 
-Trong phạm vi báo cáo này, chúng ta tập trung phân tích thiết kế toàn hệ thống và triển khai chi tiết hai module nền tảng: **Auth** và **User**. Hai module này cung cấp hạ tầng xác thực và quản lý người dùng — nền tảng mà mọi module khác đều phụ thuộc vào.
+Chương này phân tích và thiết kế toàn hệ thống, bao gồm kiến trúc module, ERD, thiết kế API, và biểu đồ tuần tự cho các **chức năng chính và tiêu biểu** của từng module đã hoàn thành.
 
 ### 8.1.3. Biểu đồ Use Case
 
-Biểu đồ Use Case mô tả các chức năng chính mà hệ thống cung cấp cho từng loại tác nhân (actor). Trong phạm vi hai module Auth và User, hệ thống có hai tác nhân: **Guest** (người dùng chưa đăng nhập) và **Authenticated User** (người dùng đã xác thực):
+Hệ thống có năm loại tác nhân (actor) theo thứ bậc kế thừa: **Guest** → **User** → **Member** → **Admin** → **Owner**. Actor cấp cao kế thừa mọi quyền của actor cấp thấp.
+
+**Sơ đồ tổng quan các module:**
 
 ```mermaid
-graph LR
-    Guest["👤 Guest<br/>(Chưa đăng nhập)"]
-    AuthUser["👤 Authenticated User<br/>(Đã đăng nhập)"]
-
-    subgraph AuthModule ["Module Auth"]
-        UC1(("Đăng ký<br/>tài khoản"))
-        UC2(("Đăng nhập"))
-        UC3(("Làm mới<br/>token"))
-        UC4(("Đăng xuất"))
-        UC5(("Quên<br/>mật khẩu"))
-        UC6(("Đặt lại<br/>mật khẩu"))
+graph TD
+    subgraph Actors ["Actors (thứ bậc kế thừa)"]
+        Guest["Guest"]
+        User["User"]
+        Member["Member"]
+        Admin["Admin"]
+        Owner["Owner"]
+        Guest --> User --> Member --> Admin --> Owner
     end
 
-    subgraph UserModule ["Module User"]
-        UC7(("Xem hồ sơ<br/>cá nhân"))
-        UC8(("Cập nhật<br/>hồ sơ"))
-        UC9(("Đổi<br/>mật khẩu"))
-        UC10(("Upload<br/>avatar"))
+    subgraph AuthModule ["Auth Module (6 UC)"]
+        UC1["Đăng ký tài khoản"]
+        UC2["Đăng nhập"]
+        UC3["Làm mới token"]
+        UC4["Đăng xuất"]
+        UC5["Quên mật khẩu"]
+        UC6["Đặt lại mật khẩu"]
     end
 
-    Guest --> UC1
-    Guest --> UC2
-    Guest --> UC3
-    Guest --> UC5
-    Guest --> UC6
+    subgraph UserModule ["User Module (4 UC)"]
+        UC7["Xem hồ sơ cá nhân"]
+        UC8["Cập nhật hồ sơ"]
+        UC9["Đổi mật khẩu"]
+        UC10["Upload avatar"]
+    end
 
-    AuthUser --> UC4
-    AuthUser --> UC7
-    AuthUser --> UC8
-    AuthUser --> UC9
-    AuthUser --> UC10
+    subgraph WorkspaceModule ["Workspace Module (10 UC)"]
+        UC11["Tạo workspace"]
+        UC12["Xem danh sách workspace"]
+        UC13["Cập nhật workspace"]
+        UC14["Xóa workspace"]
+        UC15["Mời thành viên"]
+        UC16["Chấp nhận lời mời"]
+        UC17["Thay đổi vai trò thành viên"]
+        UC18["Xóa thành viên"]
+        UC19["Rời workspace"]
+        UC20["Xem danh sách thành viên"]
+    end
+
+    subgraph ProjectModule ["Project Module (9 UC)"]
+        UC21["Tạo project"]
+        UC22["Xem danh sách project"]
+        UC23["Xem chi tiết project"]
+        UC24["Cập nhật project"]
+        UC25["Xóa project"]
+        UC26["Archive project"]
+        UC27["Unarchive project"]
+        UC28["Pin project"]
+        UC29["Unpin project"]
+    end
+
+    subgraph TaskModule ["Task Module (8+ UC)"]
+        UC30["Tạo task"]
+        UC31["Xem danh sách task"]
+        UC32["Cập nhật task"]
+        UC33["Xóa task"]
+        UC34["Thay đổi trạng thái task"]
+        UC35["Phân công thực hiện"]
+        UC36["Tạo subtask"]
+        UC37["Filter/Sort task"]
+    end
+
+    subgraph CommentModule ["Comment Module (4 UC)"]
+        UC38["Thêm bình luận"]
+        UC39["Xem bình luận"]
+        UC40["Chỉnh sửa bình luận"]
+        UC41["Xóa bình luận"]
+    end
+
+    Guest --> UC1 & UC2 & UC3 & UC5 & UC6
+    User --> UC4 & UC7 & UC8 & UC9 & UC10
+    User --> UC11 & UC12 & UC16
+    Member --> UC20 & UC21 & UC22 & UC23 & UC24 & UC28 & UC29 & UC19
+    Member --> UC30 & UC31 & UC32 & UC34 & UC35 & UC36 & UC37
+    Member --> UC38 & UC39 & UC40
+    Admin --> UC15 & UC18 & UC25 & UC26 & UC27
+    Admin --> UC41
+    Owner --> UC13 & UC14 & UC17
 ```
 
-Sơ đồ cho thấy sự phân tách rõ ràng: năm use case của Auth Module dành cho Guest (không yêu cầu đăng nhập), trong khi toàn bộ use case của User Module yêu cầu Authenticated User. Riêng use case "Đăng xuất" tuy thuộc Auth Module nhưng yêu cầu JWT — người dùng phải đang đăng nhập mới có thể đăng xuất. Thiết kế này phản ánh chiến lược Global Guard + `@Public()` đã đề cập ở phần bảo mật.
+**Mô tả các actors:**
+
+| Actor | Điều kiện | Quyền đặc trưng |
+|-------|-----------|-----------------|
+| **Guest** | Chưa đăng nhập | Đăng ký, đăng nhập, reset password |
+| **User** | Đã đăng nhập | Quản lý profile, tạo workspace mới |
+| **Member** | Thành viên workspace | Xem/tạo/sửa project, task, comment |
+| **Admin** | Admin của workspace | Thêm/xóa thành viên, archive project |
+| **Owner** | Chủ sở hữu workspace | Toàn quyền, phân quyền, xóa workspace |
+
+Thiết kế phân quyền theo nguyên tắc **Principle of Least Privilege**: mỗi actor chỉ có đúng quyền cần thiết. Ví dụ, Member có thể tạo task nhưng không thể xóa project — chỉ Admin/Owner mới có quyền đó. Owner là actor duy nhất không thể bị xóa khỏi workspace bởi bất kỳ ai khác.
 
 ---
 
@@ -473,6 +532,69 @@ Prefix `/api/v1` phục vụ API versioning — khi cần thay đổi breaking c
 
 Tất cả endpoints của User Module sử dụng đường dẫn `/me` thay vì `/:userId`. Thiết kế này ngăn chặn triệt để việc truy cập hồ sơ người khác — userId luôn được trích xuất từ JWT token đã xác thực, không phải từ URL do client cung cấp.
 
+**Workspace Module — 11 endpoints:**
+
+| Method | Endpoint | Quyền tối thiểu | Mô tả |
+|--------|----------|-----------------|-------|
+| `POST` | `/workspaces` | User | Tạo workspace mới |
+| `GET` | `/workspaces` | User | Danh sách workspace của tôi |
+| `GET` | `/workspaces/:id` | Member | Xem chi tiết workspace |
+| `PATCH` | `/workspaces/:id` | Owner | Cập nhật tên/mô tả |
+| `DELETE` | `/workspaces/:id` | Owner | Xóa workspace |
+| `POST` | `/workspaces/:id/invite` | Admin | Mời thành viên qua email |
+| `POST` | `/workspaces/accept-invite/:token` | Public | Chấp nhận lời mời |
+| `GET` | `/workspaces/:id/members` | Member | Danh sách thành viên |
+| `PATCH` | `/workspaces/:id/members/:userId` | Owner | Đổi vai trò thành viên |
+| `DELETE` | `/workspaces/:id/members/:userId` | Admin | Xóa thành viên |
+| `DELETE` | `/workspaces/:id/leave` | Member | Rời workspace |
+
+**Project Module — 9 endpoints:**
+
+| Method | Endpoint | Quyền tối thiểu | Mô tả |
+|--------|----------|-----------------|-------|
+| `POST` | `/workspaces/:wsId/projects` | Member | Tạo project trong workspace |
+| `GET` | `/workspaces/:wsId/projects` | Member | Danh sách projects |
+| `GET` | `/projects/:id` | Member | Xem chi tiết project |
+| `PATCH` | `/projects/:id` | Member | Cập nhật project |
+| `DELETE` | `/projects/:id` | Admin | Xóa project |
+| `POST` | `/projects/:id/archive` | Admin | Archive project |
+| `POST` | `/projects/:id/unarchive` | Admin | Unarchive project |
+| `POST` | `/projects/:id/pin` | Member | Pin project |
+| `POST` | `/projects/:id/unpin` | Member | Unpin project |
+
+**Task Module — 8 endpoints (dự kiến):**
+
+| Method | Endpoint | Quyền tối thiểu | Mô tả |
+|--------|----------|-----------------|-------|
+| `POST` | `/projects/:projId/tasks` | Member | Tạo task |
+| `GET` | `/projects/:projId/tasks` | Member | Danh sách tasks (filter/sort) |
+| `GET` | `/tasks/:id` | Member | Xem chi tiết task |
+| `PATCH` | `/tasks/:id` | Member | Cập nhật task |
+| `DELETE` | `/tasks/:id` | Admin | Xóa task |
+| `PATCH` | `/tasks/:id/status` | Member | Thay đổi trạng thái (drag & drop) |
+| `POST` | `/tasks/:id/assignees` | Member | Phân công thành viên |
+| `DELETE` | `/tasks/:id/assignees/:userId` | Member | Hủy phân công |
+
+**Comment Module — 4 endpoints (dự kiến):**
+
+| Method | Endpoint | Quyền tối thiểu | Mô tả |
+|--------|----------|-----------------|-------|
+| `POST` | `/tasks/:taskId/comments` | Member | Thêm bình luận |
+| `GET` | `/tasks/:taskId/comments` | Member | Danh sách bình luận |
+| `PATCH` | `/comments/:id` | Người tạo | Sửa bình luận |
+| `DELETE` | `/comments/:id` | Người tạo / Admin | Xóa bình luận |
+
+**Label Module — 4 endpoints (dự kiến):**
+
+| Method | Endpoint | Quyền tối thiểu | Mô tả |
+|--------|----------|-----------------|-------|
+| `POST` | `/workspaces/:wsId/labels` | Member | Tạo nhãn |
+| `GET` | `/workspaces/:wsId/labels` | Member | Danh sách nhãn |
+| `PATCH` | `/labels/:id` | Member | Cập nhật nhãn |
+| `DELETE` | `/labels/:id` | Admin | Xóa nhãn |
+
+Tổng cộng hệ thống có **46 endpoints** được phân chia rõ ràng theo domain. Mỗi nhóm endpoint bảo vệ bởi hai lớp: `JwtAuthGuard` kiểm tra token hợp lệ, và `WorkspacePermissionGuard` kiểm tra vai trò của người dùng trong workspace cụ thể.
+
 ### 8.4.3. Chuẩn hóa Response
 
 Mọi response trong hệ thống đều tuân theo một cấu trúc thống nhất, nhờ hai thành phần hoạt động ở tầng global:
@@ -769,6 +891,208 @@ sequenceDiagram
     Controller-->>Client: 201 Created<br/>{success: true, data: {avatar: "avatar-1710648000-482917536.jpg"}}
 ```
 
+### 8.5.8. Tạo Workspace
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as WorkspaceController
+    participant Service as WorkspaceService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: POST /workspaces<br/>Bearer token + {name, description}
+    Guard-->>Controller: user.id
+
+    Controller->>Service: create(userId, dto)
+
+    rect rgb(240, 248, 255)
+        Note over Prisma,DB: Transaction — Atomic
+        Service->>Prisma: $transaction([createWorkspace, createMember])
+        Prisma->>DB: INSERT INTO workspaces (name, description, ownerId)
+        Prisma->>DB: INSERT INTO workspace_members (workspaceId, userId, role: OWNER)
+        DB-->>Prisma: Workspace + WorkspaceMember
+    end
+
+    Service-->>Controller: WorkspaceResponseDto
+    Controller-->>Client: 201 Created {workspace}
+```
+
+Đáng chú ý: tạo workspace dùng **Prisma Transaction** để đảm bảo tính nguyên tử — hoặc cả workspace lẫn record thành viên Owner đều được tạo, hoặc cả hai đều thất bại. Điều này ngăn trường hợp workspace được tạo nhưng không có owner.
+
+### 8.5.9. Mời thành viên (Invite Member)
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as WorkspaceController
+    participant PermGuard as WorkspacePermissionGuard
+    participant Service as WorkspaceService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: POST /workspaces/:id/invite<br/>Bearer token + {email, role}
+    Guard-->>Controller: user (role: ADMIN / OWNER)
+
+    Controller->>PermGuard: Kiểm tra quyền ADMIN
+    PermGuard->>Prisma: workspace_members.findUnique({workspaceId, userId})
+    Prisma-->>PermGuard: role = ADMIN
+    PermGuard-->>Controller: Authorized
+
+    Controller->>Service: inviteMember(workspaceId, inviterId, dto)
+
+    Service->>Prisma: users.findUnique({email})
+    Prisma->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>Prisma: User | null
+
+    alt User chưa là thành viên
+        Service->>Prisma: workspace_members.create({workspaceId, userId, role})
+        Prisma->>DB: INSERT INTO workspace_members (...)
+        DB-->>Prisma: WorkspaceMember
+        Service-->>Controller: {message: "Member added"}
+        Controller-->>Client: 201 Created
+    else Email chưa có tài khoản
+        Service->>Prisma: workspace_invitations.create({email, token, expiresAt})
+        Prisma->>DB: INSERT INTO workspace_invitations (...)
+        Note over Service: Gửi email mời (nếu có mail service)
+        Service-->>Controller: {message: "Invitation sent"}
+        Controller-->>Client: 201 Created
+    else Đã là thành viên
+        Service-->>Controller: throw ConflictException
+        Controller-->>Client: 409 Already a member
+    end
+```
+
+### 8.5.10. Tạo Project
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as ProjectController
+    participant PermGuard as WorkspacePermissionGuard
+    participant Service as ProjectService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: POST /workspaces/:wsId/projects<br/>Bearer token + {name, description, color}
+    Guard-->>Controller: user (role: MEMBER)
+
+    Controller->>PermGuard: Kiểm tra thành viên workspace
+    PermGuard-->>Controller: Authorized (role >= MEMBER)
+
+    Controller->>Service: create(workspaceId, userId, dto)
+    Service->>Prisma: projects.create({name, workspaceId, createdById, color})
+    Prisma->>DB: INSERT INTO projects (...)
+    DB-->>Prisma: Project record
+
+    Service-->>Controller: ProjectResponseDto
+    Controller-->>Client: 201 Created {project}
+```
+
+### 8.5.11. Tạo Task
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as TaskController
+    participant Service as TaskService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: POST /projects/:projId/tasks<br/>Bearer token + {title, status, priority, dueDate, assigneeIds}
+    Guard-->>Controller: user.id
+
+    Controller->>Service: create(projectId, userId, dto)
+
+    Service->>Prisma: projects.findUnique({id: projectId})
+    Prisma-->>Service: Project (workspaceId, status)
+    Note over Service: Kiểm tra project tồn tại và không ARCHIVED
+
+    Service->>Prisma: tasks.count({projectId, status: dto.status})
+    Prisma-->>Service: count (để tính position cuối cùng)
+
+    Service->>Prisma: tasks.create({title, projectId, status, priority, position, createdById})
+    Prisma->>DB: INSERT INTO tasks (...)
+    DB-->>Prisma: Task record
+
+    opt dto.assigneeIds có giá trị
+        Service->>Prisma: task_assignments.createMany([{taskId, userId}])
+        Prisma->>DB: INSERT INTO task_assignments (...)
+    end
+
+    Service-->>Controller: TaskResponseDto
+    Controller-->>Client: 201 Created {task}
+```
+
+### 8.5.12. Thay đổi trạng thái Task (Drag & Drop)
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as TaskController
+    participant Service as TaskService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: PATCH /tasks/:id/status<br/>Bearer token + {status, position}
+    Guard-->>Controller: user.id
+
+    Controller->>Service: updateStatus(taskId, userId, {status, position})
+
+    Service->>Prisma: tasks.findUnique({id: taskId, include: project})
+    Prisma-->>Service: Task với status cũ và projectId
+
+    alt Status không thay đổi
+        Service-->>Controller: Task không đổi (no-op)
+    else Status thay đổi
+        Service->>Prisma: tasks.updateMany({projectId, status: newStatus, position >= newPosition}<br/>→ tăng position lên 1 để nhường chỗ)
+        Prisma->>DB: UPDATE tasks SET position = position + 1 WHERE ...
+
+        Service->>Prisma: tasks.update({id: taskId}, {status, position, completedAt?})
+        Prisma->>DB: UPDATE tasks SET status = ?, position = ?
+        Note over DB: Nếu status = DONE thì set completedAt = now()
+
+        Service-->>Controller: TaskResponseDto (status mới)
+        Controller-->>Client: 200 OK {task}
+        Note over Client: Frontend cập nhật Kanban board
+    end
+```
+
+Sequence diagram này thể hiện cơ chế **position reordering**: khi task được kéo vào vị trí mới trong column, các task phía sau được dịch chuyển trước, sau đó mới cập nhật task đang di chuyển. Điều này đảm bảo không có hai task cùng position trong một column.
+
+### 8.5.13. Thêm bình luận (Add Comment)
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Guard as JwtAuthGuard
+    participant Controller as CommentController
+    participant Service as CommentService
+    participant Prisma as PrismaService
+    participant DB as PostgreSQL
+
+    Client->>Guard: POST /tasks/:taskId/comments<br/>Bearer token + {content}
+    Guard-->>Controller: user.id
+
+    Controller->>Service: create(taskId, userId, dto)
+
+    Service->>Prisma: tasks.findUnique({id: taskId, include: {project: {include: {workspace: {include: {members}}}}}})
+    Prisma-->>Service: Task + workspace members
+    Note over Service: Kiểm tra user là thành viên workspace của task
+
+    Service->>Prisma: comments.create({content, taskId, userId})
+    Prisma->>DB: INSERT INTO comments (...)
+    DB-->>Prisma: Comment record
+
+    Service-->>Controller: CommentResponseDto
+    Controller-->>Client: 201 Created {comment}
+```
+
 ---
 
 ## 8.6. Thiết kế bảo mật
@@ -912,8 +1236,18 @@ Năm lớp cấu hình này hoạt động như một pipeline xử lý mọi re
 
 ## 8.9. Tổng kết
 
-Chương này đã phân tích và thiết kế toàn bộ hệ thống TodoList Collaboration từ góc nhìn kiến trúc. Hệ thống được tổ chức theo kiến trúc module hóa với ba tầng rõ ràng (Controller → Service → Database qua Prisma ORM), cơ sở dữ liệu PostgreSQL gồm 17 bảng phục vụ các domain nghiệp vụ khác nhau, và API tuân theo chuẩn RESTful với response format thống nhất.
+Chương này đã phân tích và thiết kế toàn hệ thống TodoList Collaboration từ góc nhìn kiến trúc, bao gồm sáu khía cạnh chính:
 
-Về mặt bảo mật, hệ thống triển khai chiến lược dual-token kết hợp Token Blacklist và Token Rotation, đảm bảo cân bằng giữa trải nghiệm người dùng (không phải đăng nhập lại liên tục) và an toàn (thu hồi token tức thì khi cần). Global Guard với cơ chế `@Public()` áp dụng triết lý "secure by default" — mọi endpoint đều được bảo vệ trừ khi được đánh dấu tường minh là công khai.
+**Kiến trúc module** — Hệ thống gồm 14 module theo nguyên tắc phân tách trách nhiệm, với `PrismaModule @Global` làm hạ tầng dùng chung và dependency chain rõ ràng: Workspace → Project → Task. Mỗi module tuân theo cấu trúc ba tầng Controller → Service → Database.
 
-Với nền tảng thiết kế này, chương tiếp theo sẽ triển khai chi tiết từng module — bắt đầu từ Auth Module (hệ thống xác thực) đến User Module (quản lý hồ sơ người dùng), kèm theo mã nguồn cụ thể và giải thích kỹ thuật từng bước.
+**Use Case và phân quyền** — Năm loại actor (Guest, User, Member, Admin, Owner) theo thứ bậc kế thừa, phủ toàn bộ 41+ use case của 7 module. Hệ thống phân quyền theo nguyên tắc Least Privilege: mỗi actor chỉ có đúng quyền cần thiết cho vai trò của mình.
+
+**Thiết kế CSDL** — PostgreSQL với 17 bảng, trong đó `users` là entity trung tâm liên kết đến 12 bảng. Các bảng hỗ trợ bảo mật (`refresh_tokens`, `password_resets`, `invalidated_tokens`) sử dụng kỹ thuật soft invalidation để lưu lịch sử cho audit.
+
+**Thiết kế API** — 46 endpoints RESTful chia thành 7 module, bảo vệ hai lớp (JWT + WorkspacePermission). Response được chuẩn hóa thống nhất qua `TransformResponseInterceptor` và `HttpExceptionFilter`.
+
+**Biểu đồ tuần tự** — 13 sequence diagram minh họa luồng xử lý cho các chức năng chính: xác thực (register, login, refresh, logout), quản lý người dùng (profile, change password, avatar), cộng tác workspace (tạo workspace, mời thành viên), quản lý project, task (tạo, drag & drop status), và bình luận.
+
+**Bảo mật** — Chiến lược dual-token với Token Blacklist + Token Rotation, Global Guard theo "secure by default", bcrypt hash mật khẩu với 10 salt rounds, và file upload được kiểm soát chặt chẽ về MIME type, kích thước, và tên file.
+
+Với nền tảng thiết kế này, các chương tiếp theo sẽ triển khai chi tiết từng module — từ Auth, User đến Workspace và Project — kèm theo mã nguồn đầy đủ và giải thích kỹ thuật.

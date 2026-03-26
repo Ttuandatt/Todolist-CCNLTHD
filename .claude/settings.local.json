@@ -4,7 +4,19 @@
       "Bash(curl -s \"https://api.trello.com/1/boards/2xpmASUC/lists?key=f9bc4dd90ad86736c21f0028f127f4bb&token=ATTAa2556b736bf5b59f10f931c3d6ca97feb8b25a41f23356ca97f1f660b4ca0bc1BB42D7D2\")",
       "Bash(node scripts/create-trello-cards.mjs)",
       "Bash(git merge:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(which python:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(rm:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5432)",
+      "Bash(tasklist /FI \"PID eq 25744\" /FO LIST)",
+      "Bash(tasklist /FI \"PID eq 12012\" /FO LIST)",
+      "Bash(tasklist //FI \"PID eq 25744\")",
+      "Bash(tasklist //FI \"PID eq 12012\")",
+      "Bash(docker ps:*)"
     ]
   }
 }
