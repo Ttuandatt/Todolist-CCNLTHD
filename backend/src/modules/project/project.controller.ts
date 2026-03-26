@@ -8,6 +8,8 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -67,6 +69,7 @@ export class ProjectController {
   }
 
   @Post('projects/:id/archive')
+  @HttpCode(HttpStatus.OK)
   archive(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -75,6 +78,7 @@ export class ProjectController {
   }
 
   @Post('projects/:id/unarchive')
+  @HttpCode(HttpStatus.OK)
   unarchive(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -83,6 +87,7 @@ export class ProjectController {
   }
 
   @Post('projects/:id/pin')
+  @HttpCode(HttpStatus.OK)
   pin(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -91,6 +96,7 @@ export class ProjectController {
   }
 
   @Post('projects/:id/unpin')
+  @HttpCode(HttpStatus.OK)
   unpin(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
