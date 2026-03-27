@@ -335,8 +335,11 @@ export class AuthService {
       },
     });
 
-    console.log(`[DEV] Reset token for ${dto.email}: ${resetToken}`); // Chờ Phase gửi mail
-    return { message: 'Kiểm tra hộp thư' };
+    // 📧 Gửi email với link reset password
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    await this.mailService.sendPasswordResetEmail(user.email, user.name, resetLink);
+
+    return { message: 'Kiểm tra hộp thư để đổi mật khẩu' };
   }
 
   // 6️⃣ Reset Password
@@ -377,6 +380,259 @@ export class AuthService {
     return { accessToken, refreshToken, expiresIn: 900 }; // Frontend xài expiresIn để đếm ngược
   }
 }
+```
+
+---
+
+## Bước 5a: MailService — Gửi thư điện tử 📧
+
+### Tại sao?
+Để gửi email reset password, ta cần dịch vụ chuyên môn. Phase 1 chuyển hẳn sang **Brevo Transactional Email** cho môi trường thật, và giữ **Mock** cho local/dev (in console, không gửi thực). Việc chuyển đổi này giúp đồng bộ với spec hệ thống mới, thay thế hoàn toàn nhà cung cấp cũ.
+
+### Bước 5a.1: Cài package
+```bash
+npm install @getbrevo/brevo@3.0.0 @types/node
+```
+
+### Bước 5a.2: Thêm Brevo API Key vào .env
+```env
+# Brevo Configuration
+BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+BREVO_SENDER_EMAIL=noreply@todolist-collab.com
+BREVO_SENDER_NAME=TodoList Collaboration
+MAIL_DRIVER=brevo  # hoặc 'mock' khi dev
+FRONTEND_URL=http://localhost:3000  # Link frontend để tạo link reset
+```
+
+- `BREVO_API_KEY`: API key dạng `xkeysib-...` lấy từ Brevo Dashboard → SMTP & API. Luôn lưu trong `.env.local`, không commit.
+- `BREVO_SENDER_EMAIL`: Email đã verify dùng để đứng tên người gửi (ví dụ `noreply@...`). Nếu chưa verify, Brevo trả lỗi `code: "unauthorized"`.
+- `BREVO_SENDER_NAME`: Tên hiển thị trong hộp thư (brand name). Có thể set theo workspace.
+- `MAIL_DRIVER`: Chọn driver gửi mail. `brevo` → gọi API thật, `mock` → chỉ log console phục vụ dev/test.
+- `FRONTEND_URL`: Base URL frontend để dựng link reset password (`${FRONTEND_URL}/reset-password?...`).
+
+> 📨 **Lưu ý xác minh sender:** Đăng nhập Brevo Dashboard → Senders & IP → Domains (hoặc Senders) để xác thực domain/email. Trong thời gian chờ DNS/email confirm (5–15 phút, link hết hạn sau 24h), hãy để `MAIL_DRIVER=mock` để tránh lỗi gửi. Chi tiết bước-bước nằm trong phần MailService bên dưới.
+
+> 🔁 **Migration note:** Từ giờ provider email cũ chính thức bị khai tử khỏi guide. Các lệnh cài đặt, biến môi trường, và snippet phía dưới đều phải dùng Brevo + mock để đồng bộ môi trường dev/staging/prod.
+
+### Bước 5a.3: Tạo MailService
+📁 **File:** `src/mail/mail.service.ts`
+
+```typescript
+import { Injectable, Logger } from '@nestjs/common';
+import { ApiClient, TransactionalEmailsApi, SendSmtpEmail } from '@getbrevo/brevo';
+
+@Injectable()
+export class MailService {
+  private readonly logger = new Logger(MailService.name);
+  private readonly isMock = process.env.MAIL_DRIVER !== 'brevo';
+  private readonly brevo?: TransactionalEmailsApi;
+
+  constructor() {
+    if (!this.isMock) {
+      if (!process.env.BREVO_API_KEY?.startsWith('xkeysib-')) {
+        throw new Error('Invalid Brevo API key format');
+      }
+      const apiClient = ApiClient.instance;
+      apiClient.authentications['apiKey'].apiKey = process.env.BREVO_API_KEY!;
+      apiClient.timeout = 5000; // Fail fast khi Brevo chậm
+      this.brevo = new TransactionalEmailsApi();
+    }
+  }
+
+  private async sendBrevoEmail(to: string, name: string, subject: string, htmlContent: string) {
+    if (this.isMock || !this.brevo) {
+      this.logger.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+      this.logger.log(`[MOCK EMAIL] Body: ${htmlContent}`);
+      return;
+    }
+
+    const email = new SendSmtpEmail();
+    email.to = [{ email: to, name }];
+    email.subject = subject;
+    email.sender = {
+      email: process.env.BREVO_SENDER_EMAIL!,
+      name: process.env.BREVO_SENDER_NAME || 'TodoList Collaboration',
+    };
+    email.htmlContent = htmlContent;
+
+    try {
+      await this.brevo.sendTransacEmail(email);
+    } catch (error: any) {
+      const status = error?.response?.status ?? 'unknown';
+      const body = typeof error?.response?.text === 'string'
+        ? error.response.text
+        : JSON.stringify(error?.response?.body || error?.message);
+      this.logger.error(`Brevo email failed (status=${status}): ${body}`);
+      if (status === 429) {
+        this.logger.warn('Brevo rate limit hit (300 emails/day free tier). Switch MAIL_DRIVER=mock until quota resets.');
+      }
+    }
+  }
+
+  async sendPasswordResetEmail(email: string, name: string, resetLink: string): Promise<void> {
+    const subject = '🔐 Đặt lại mật khẩu TodoList Collaboration';
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Xin chào ${name},</h2>
+
+        <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+
+        <p style="margin: 30px 0;">
+          <a href="${resetLink}"
+             style="display: inline-block; padding: 12px 30px; background-color: #4CAF50;
+                    color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Đặt lại mật khẩu
+          </a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">
+          ⏰ <strong>Liên kết này sẽ hết hạn sau 15 phút</strong>
+        </p>
+
+        <p style="color: #999; font-size: 12px;">
+          Nếu bạn không yêu cầu điều này, vui lòng bỏ qua email này.<br>
+          © 2026 TodoList Collaboration. All rights reserved.
+        </p>
+      </div>
+    `;
+
+    await this.sendBrevoEmail(email, name, subject, htmlContent);
+  }
+
+  async sendEmailVerificationEmail(email: string, name: string, verifyLink: string): Promise<void> {
+    const subject = '📧 Xác nhận email của bạn';
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Chào ${name}!</h2>
+        <p>Vui lòng xác nhận email của bạn bằng cách click vào nút dưới đây:</p>
+        <p style="margin: 30px 0;">
+          <a href="${verifyLink}"
+             style="display: inline-block; padding: 12px 30px; background-color: #2196F3;
+                    color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Xác nhận email
+          </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">⏰ Liên kết có hiệu lực trong 24 giờ</p>
+      </div>
+    `;
+
+    await this.sendBrevoEmail(email, name, subject, htmlContent);
+  }
+
+  async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    const subject = '🎉 Chào mừng tới TodoList Collaboration!';
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Chào mừng ${name}! 🎉</h2>
+        <p>Tài khoản của bạn đã được tạo thành công!</p>
+        <p>Bây giờ bạn có thể:</p>
+        <ul>
+          <li>✅ Tạo không gian làm việc (Workspace)</li>
+          <li>✅ Mời các thành viên cùng làm việc</li>
+          <li>✅ Quản lý dự án và nhiệm vụ hiệu quả</li>
+        </ul>
+        <p style="margin-top: 30px;">
+          <a href="${process.env.FRONTEND_URL}/dashboard"
+             style="display: inline-block; padding: 12px 30px; background-color: #FF9800;
+                    color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Vào Dashboard
+          </a>
+        </p>
+      </div>
+    `;
+
+    await this.sendBrevoEmail(email, name, subject, htmlContent);
+  }
+}
+```
+
+> 👀 **Mock output** (khi `MAIL_DRIVER=mock`):
+> ```
+> [MOCK EMAIL] To: user@example.com | Subject: 🔐 Đặt lại mật khẩu TodoList Collaboration
+> [MOCK EMAIL] Body: <div style="font-family: Arial, sans-serif;">...</div>
+> ```
+
+### Bước 5a.4: Bảo mật & xác minh Brevo
+
+- **Cất key ở đâu?** `BREVO_API_KEY` phải nằm trong `.env` hoặc `.env.local`, tuyệt đối không commit. Check `.gitignore` bảo vệ file cấu hình.
+- **Xoay key thế nào?** Brevo Dashboard → SMTP & API → Generate a new key → cập nhật secrets → redeploy → revoke key cũ. Guard `startsWith('xkeysib-')` sẽ cảnh báo nếu ai copy nhầm kiểu key khác.
+- **Xác minh sender/domain:**
+  1. Vào **Brevo Dashboard → Senders & IP → Domains** (để dùng toàn domain) hoặc tab **Senders** nếu chỉ xác minh email đơn lẻ.
+  2. Với domain: tạo bản ghi TXT + CNAME đúng như Brevo hướng dẫn, chờ 5–15 phút để DNS propagate.
+  3. Với single sender: Brevo gửi email có link xác nhận, hạn 24 giờ.
+  4. Khi chưa xác minh, API trả HTTP 400 với payload `{ code: "unauthorized", message: "Sender not verified" }`. Lúc đó chuyển về `MAIL_DRIVER=mock` để dev/test không bị block.
+
+### Bước 5a.5: Tạo MailModule
+📁 **File:** `src/mail/mail.module.ts`
+
+```typescript
+import { Module } from '@nestjs/common';
+import { MailService } from './mail.service';
+
+@Module({
+  providers: [MailService],
+  exports: [MailService], // Cho phép module khác xài
+})
+export class MailModule {}
+```
+
+### Bước 5a.6: Import MailModule vào AuthModule
+📁 **File:** `src/auth/auth.module.ts` (Update)
+
+```typescript
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { MailModule } from '../mail/mail.module'; // 🆕 Thêm dòng này
+
+@Module({
+  imports: [
+    PassportModule,
+    JwtModule.register({}),
+    MailModule, // 🆕 Import MailModule
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService],
+})
+export class AuthModule {}
+```
+
+### Bước 5a.7: Update AuthService để inject MailService
+📁 **File:** `src/auth/auth.service.ts` (Update constructor)
+
+```typescript
+import { MailService } from '../mail/mail.service'; // Thêm import này
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+    private mailService: MailService, // 🆕 Inject MailService
+  ) {}
+
+  // ... rest of methods
+}
+```
+
+### Bước 5a.8: Update forgotPassword method trong AuthService
+
+Thay thế phần old:
+```typescript
+    console.log(`[DEV] Reset token for ${dto.email}: ${resetToken}`);
+    return { message: 'Kiểm tra hộp thư' };
+```
+
+Thành new:
+```typescript
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    await this.mailService.sendPasswordResetEmail(user.email, user.name, resetLink);
+
+    return { message: 'Email đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư của bạn.' };
 ```
 
 ---
@@ -495,17 +751,21 @@ export class AppModule {}
 2. **Login:** Đẩy email/pass vào `/api/v1/auth/login` → Lấy chùm Access/Refresh (Mã 200). Đẩy láo nháo ra 401.
 3. **Thoát gấp:** Ném token lên Swagger bấm Authorize. Gõ `/api/v1/auth/logout`.
 4. **Hậu quả Blacklist:** Vẫn dùng mã vỡ cũ gõ thêm chày cối `/api/v1/auth/logout` lần 2 → Nó sút MÃ 401 **"Token bị thu hồi"**. Ngon ơ!
+5. **Forgot password (mock driver):** Đặt `MAIL_DRIVER=mock`, gọi `/api/v1/auth/forgot-password`, kiểm tra console phải log đúng 2 dòng `[MOCK EMAIL] To...` và `[MOCK EMAIL] Body...` chứa reset link.
+6. **Forgot password (Brevo driver):** Đặt `MAIL_DRIVER=brevo`, dựng staging credential thật, gọi API → Brevo dashboard báo trạng thái "Accepted" và email landing vào inbox < 5 phút. Nếu thấy HTTP 400 `{ code: "unauthorized" }` nghĩa là sender chưa verify → quay lại phần Bước 5a.4.
+7. **Rate limit scenario:** Spam >300 email/ngày trên free tier để xem log cảnh báo `Brevo rate limit hit...`. Khi bị 429, chuyển sang `MAIL_DRIVER=mock` để không chặn QA.
 
 ---
 
 ## Checklist Phase 1 ✅
-- [ ] Thêm biến `.env`
+- [ ] Thêm biến `.env` (JWT + Brevo email config)
 - [ ] Soạn đủ 5 DTO ngạnh cửa
 - [ ] JwtStrategy chặn token (kèm test blacklist)
 - [ ] JwtAuthGuard làm lính gác
 - [ ] Hai Decorator `@Public()` + `@CurrentUser()`
+- [ ] Code MailService Brevo + mock mode, import vào AuthModule
 - [ ] Code AuthService + AuthController
-- [ ] Wire mớ bòng bong vào 2 file Module
+- [ ] Wire mớ bòng bong vào Module (Auth + Mail + App)
 - [ ] Bơm Migrate và Test dứt điểm!
 
 ---
