@@ -148,6 +148,27 @@ Trong đồ án, tôi phụ trách **Phase 3 — Workspace Module + Project Modu
 - Nhận hỗ trợ từ **Huyền** review Activity Log, Transfer Ownership, Viewer Role
 - Nhận hỗ trợ từ **Đạt** review & merge code
 
+### 2.11. Tuần 9 (27/03): Thiết kế Sequence Diagram — Core Flows
+
+- Phối hợp tạo **11 Sequence Diagrams** cho các core flows chính:
+  - **Authentication**: User Login (2), Refresh Token (1)
+  - **Workspace Management**: Create Workspace (1), Invite & Accept Member (1)
+  - **Project Management**: Create Project & Kanban Board (1)
+  - **Task Management**: Create, Update, Change Status, Assign, Comment & Notification (5)
+  - **Security**: RBAC Permission Check (1)
+- Sử dụng **Mermaid syntax** cho UML Sequence Diagram
+- Tài liệu đầy đủ: `docs/PRD/10-SEQUENCE_DIAGRAM_CORE_FLOWS.md` (369 dòng)
+- Mỗi flow bao gồm:
+  - Happy path (case thành công)
+  - Alternative paths (alternative cases)
+  - Exception handling (error cases)
+  - Actor: Frontend, Controllers, Services, Database
+- Các diagram này phục vụ:
+  - Documentation cho report (Chương 8: System Analysis & Design)
+  - Testing reference cho API integration tests
+  - Implementation guide cho backend team
+  - Communication tool cho team meetings
+
 ---
 
 ## 3. TỔNG HỢP SẢN PHẨM ĐÃ TẠO
@@ -163,8 +184,33 @@ Trong đồ án, tôi phụ trách **Phase 3 — Workspace Module + Project Modu
 ### 3.2. Sơ đồ thiết kế
 
 - **Class Diagram**: mapping ERD → NestJS modules (Controller → Service → Entity)
+- **Sequence Diagram — Core Flows** (11 luồng):
+  - **Authentication (2 flows)**: User Login, Refresh Token
+  - **Workspace Management (2 flows)**: Create Workspace, Invite & Accept Member
+  - **Project Management (1 flow)**: Create Project & View Kanban Board
+  - **Task Management (5 flows)**: Create, Update, Change Status, Assign, Comment & Notification
+  - **Security (1 flow)**: RBAC Permission Check
+  - **Tài liệu**: `docs/PRD/10-SEQUENCE_DIAGRAM_CORE_FLOWS.md` (Mermaid syntax)
 
-### 3.3. Code backend (đang thực hiện)
+### 3.3. Thiết kế hệ thống (Sequence Diagrams)
+
+| Core Flow | UML Diagram | Loại | Ghi chú |
+|-----------|-------------|------|---------|
+| User Login | sequenceDiagram (happy path + error cases) | Authentication | Check hashed password, generate 2 tokens |
+| Refresh Token | sequenceDiagram (token rotation) | Authentication | Validate stored token, revoke old, generate new |
+| Create Workspace | sequenceDiagram (ownership assignment) | Workspace Mgmt | Initialize with owner, create first member entry |
+| Invite & Accept Member | sequenceDiagram (6-step flow) | Workspace Mgmt | Generate invite token, validate expiry, role assignment |
+| Create Project | sequenceDiagram (Kanban board init) | Project Mgmt | Link to workspace, initialize status columns |
+| Create Task | sequenceDiagram (field validation) | Task Mgmt | Check project access, assign to user, create status |
+| Update Task | sequenceDiagram (field validation + RBAC) | Task Mgmt | Verify assignee permission before update |
+| Change Task Status | sequenceDiagram (drag & drop) | Task Mgmt | Validate status transition, trigger notification |
+| Assign Task | sequenceDiagram (member permission check) | Task Mgmt | Verify member in workspace, notify assignee |
+| Add Comment | sequenceDiagram (comment + notification) | Task Mgmt | Create comment, send notification to task members |
+| RBAC Check | sequenceDiagram (role-based gates) | Security | Verify OWNER/ADMIN/EDITOR/VIEWER permissions |
+
+**Tài liệu**: `docs/PRD/10-SEQUENCE_DIAGRAM_CORE_FLOWS.md` (369 dòng, Mermaid syntax)
+
+### 3.4. Code backend (đang thực hiện)
 
 | Module | Endpoints | Trạng thái |
 |--------|:---------:|:----------:|
@@ -174,7 +220,7 @@ Trong đồ án, tôi phụ trách **Phase 3 — Workspace Module + Project Modu
 | Workspace Transfer Owner | 1 (PATCH /workspaces/:id/transfer-owner) | 🔄 Tuần 9 |
 | Project Module | 5 (GET list, POST create, GET detail, PATCH update, DELETE) | 🔄 Tuần 9 |
 
-### 3.4. Hoạt động hỗ trợ
+### 3.5. Hoạt động hỗ trợ
 
 - Test API endpoints Auth Module trên Hoppscotch
 - Review code AuthService, AuthController
@@ -191,7 +237,8 @@ Trong đồ án, tôi phụ trách **Phase 3 — Workspace Module + Project Modu
 - **TypeScript nâng cao**: Generics, Decorators, Type Guards, Interface patterns
 - **Prisma ORM**: relations (1:1, 1:N, M:N qua bảng trung gian), cascade operations, schema design
 - **Authentication flow**: JWT access/refresh token, Token Blacklist, bcrypt
-- **Class Diagram**: thiết kế hệ thống OOP cho NestJS, mapping từ ERD sang code
+- **Class Diagram & Sequence Diagram**: thiết kế hệ thống OOP cho NestJS, mapping từ ERD sang code, UML 2.0 notation cho core business flows
+- **Mermaid Diagram**: tạo documentation-as-code cho UML (Class, Sequence, Activity diagrams)
 
 ### 4.2. Quy trình làm việc
 
@@ -229,7 +276,7 @@ Trong đồ án, tôi phụ trách **Phase 3 — Workspace Module + Project Modu
 ### 6.3. Mức hoàn thành
 - Phần báo cáo: **85%** (Chương 4 Controllers xong, review xong)
 - Phần code backend: **55%** (workspace module hoàn tất, invite flow đang tích hợp)
-- Phần thiết kế: **100%** (Class Diagram, review Data Dictionary)
+- Phần thiết kế: **100%** (Class Diagram + 11 Sequence Diagrams for core flows, review Data Dictionary)
 
 ---
 
