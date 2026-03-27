@@ -8,6 +8,7 @@ import { APP_GUARD } from '@nestjs/core';
 // Khác với app.useGlobalGuards(): dùng APP_GUARD cho phép Guard dùng DI (inject Reflector)
 
 import { AuthModule } from './auth/auth.module';
+import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
@@ -21,6 +22,7 @@ import { TaskModule } from './modules/task/task.module';
     // isGlobal: true → không cần import ConfigModule ở từng module con
     // .forRoot() = load file .env tại root project
     AuthModule,
+    MailModule,
     PrismaModule,
     UserModule,
     WorkspaceModule,

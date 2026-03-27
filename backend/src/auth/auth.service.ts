@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { RegisterDto } from './dto/register.dto';
@@ -17,12 +18,14 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
-  // Constructor Injection — NestJS tự động inject hai service:
-  // PrismaService: truy cập DB
+  // Constructor Injection — NestJS tự động inject các service:
   // JwtService: tạo/verify JWT token
+  // PrismaService: truy cập DB
+  // MailService: gửi email
   constructor(
     private jwtService: JwtService,
     private prisma: PrismaService,
+    private mailService: MailService,
   ) {}
 
   // ══════════════════════════════════════════════════════════════════════════════════════
@@ -221,9 +224,9 @@ export class AuthService {
       },
     });
 
-    // TODO: Gửi email chứa link reset (sẽ implement khi có email service)
-    // Link có dạng: https://app.com/reset-password?token=<resetToken>
-    console.log(`[DEV] Reset token for ${dto.email}: ${resetToken}`);
+    // Bước 4: Gửi email chứa link reset password
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    await this.mailService.sendPasswordResetEmail(user.email, user.name, resetLink);
 
     return { message: 'Reset password email sent' };
   }
