@@ -1,9 +1,10 @@
 # USE CASE SPECIFICATION
 ## DỰ ÁN: TODOLIST COLLABORATION
 
-> **Phiên bản:** 1.0  
-> **Ngày tạo:** 02/02/2026  
+> **Phiên bản:** 2.0
+> **Ngày cập nhật:** 27/03/2026
 > **Tổng số Use Case:** 60
+> **Note:** Use cases now aligned with 36 Sequence Diagrams (individual flows)
 
 ---
 
@@ -1037,3 +1038,51 @@
 | UC15 | | | | | ✓ |
 | UC52-UC55 | | ✓ | ✓ | ✓ | ✓ |
 | UC56-UC60 | | | ✓ | ✓ | ✓ |
+
+---
+
+## 6. MAPPING USE CASES TO SEQUENCE DIAGRAMS
+
+Each Use Case has a corresponding Sequence Diagram showing the detailed flow:
+
+| UC Category | Use Cases | Sequence Diagrams | Count |
+|-------------|-----------|------------------|-------|
+| **Authentication** | UC01-UC06 | SD1-SD6 (User Registration, Login, OAuth, Forgot, Reset, Refresh) | 6 |
+| **User Management** | UC07-UC10 | SD7-SD10 (View Profile, Update, Change Password, Upload Avatar) | 4 |
+| **Workspace** | UC11-UC20 | SD11-SD16 (Create, List, Invite, Accept, Role, Remove) | 6 |
+| **Project** | UC21-UC28 | SD17-SD19 (Create, View Kanban, Archive) | 3 |
+| **Task** | UC29-UC46 | SD20-SD27 (Create, Update, Status, Assign, Unassign, Subtasks, Labels, My Tasks) | 8 |
+| **Comment** | UC47-UC51 | SD28-SD30 (Add, Reply, Edit/Delete) | 3 |
+| **Notification** | UC52-UC55 | SD31-SD34 (View, Mark Read, Mark All, Real-time) | 4 |
+| **Search & Filter** | UC56-UC60 | – (Advanced features shown in Task flows) | – |
+| **Attachment** | (implicitly UC44-UC45) | SD35-SD36 (Upload, Delete) | 2 |
+
+**Total: 60 UCs → 36 Sequence Diagrams + Advanced Filtering patterns**
+
+---
+
+## 7. NOTES FOR DEVELOPMENT
+
+### Role-Based Access Control (RBAC)
+- **Guest**: Can register, login, forgot/reset password
+- **User**: Personal operations (profile, preferences)
+- **Member**: Can view/interact with workspace content
+- **Admin**: Can manage members and workspace settings
+- **Owner**: Can transfer ownership, delete workspace
+
+### Key Business Rules Documented
+1. **Workspace**: Only Owner can delete, Only OWNER/ADMIN can invite
+2. **Task**: Created by any member, can assign to others
+3. **Token Management**: Access token (15min), Refresh token (7 days), blacklist on logout
+4. **Cascade Delete**: Deleting workspace deletes all projects/tasks/comments
+5. **Permissions**: Always verify membership before allowing operations
+
+### Implementation Priority
+1. **Phase 1 (Auth)**: UC01-UC06
+2. **Phase 2 (User)**: UC07-UC10
+3. **Phase 3 (Workspace)**: UC11-UC20
+4. **Phase 4 (Project)**: UC21-UC28
+5. **Phase 5 (Task)**: UC29-UC46
+6. **Phase 6 (Comment)**: UC47-UC51
+7. **Phase 7 (Notification)**: UC52-UC55
+8. **Phase 8 (Search)**: UC56-UC60

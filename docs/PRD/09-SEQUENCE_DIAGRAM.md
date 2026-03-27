@@ -1,28 +1,70 @@
 # SEQUENCE DIAGRAM - SƠ ĐỒ TUẦN TỰ
 ## DỰ ÁN: TODOLIST COLLABORATION
 
-> **Phiên bản:** 2.0  
-> **Ngày cập nhật:** 05/02/2026  
+> **Phiên bản:** 2.0
+> **Ngày cập nhật:** 27/03/2026
 > **Notation:** UML 2.0 / Mermaid
+> **Cấu trúc:** Separated by individual use case flows (NOT grouped by module)
 
 ---
 
 ## MỤC LỤC
 
-1. [Authentication Module](#1-authentication-module)
-2. [User Module](#2-user-module)
-3. [Workspace Module](#3-workspace-module)
-4. [Project Module](#4-project-module)
-5. [Task Module](#5-task-module)
-6. [Comment Module](#6-comment-module)
-7. [Notification Module](#7-notification-module)
-8. [Attachment Module](#8-attachment-module)
+### Authentication Flows (6 flows)
+1. [User Registration](#1-user-registration)
+2. [User Login](#2-user-login)
+3. [OAuth Login (Google/GitHub)](#3-oauth-login-googlegithub)
+4. [Forgot Password](#4-forgot-password)
+5. [Reset Password](#5-reset-password)
+6. [Refresh Token](#6-refresh-token)
+
+### User Profile Flows (4 flows)
+7. [View Profile](#7-view-profile)
+8. [Update Profile](#8-update-profile)
+9. [Change Password](#9-change-password)
+10. [Upload Avatar](#10-upload-avatar)
+
+### Workspace Management Flows (6 flows)
+11. [Create Workspace](#11-create-workspace)
+12. [List Workspaces](#12-list-workspaces)
+13. [Invite Member](#13-invite-member)
+14. [Accept Invitation](#14-accept-invitation)
+15. [Update Member Role](#15-update-member-role)
+16. [Remove Member](#16-remove-member)
+
+### Project Management Flows (3 flows)
+17. [Create Project](#17-create-project)
+18. [View Project (Kanban Board)](#18-view-project-kanban-board)
+19. [Archive/Unarchive Project](#19-archiveunarchive-project)
+
+### Task Management Flows (8 flows)
+20. [Create Task](#20-create-task)
+21. [Update Task](#21-update-task)
+22. [Change Task Status (Drag & Drop)](#22-change-task-status-drag--drop)
+23. [Assign Task](#23-assign-task)
+24. [Unassign Task](#24-unassign-task)
+25. [Manage Subtasks](#25-manage-subtasks)
+26. [Add/Remove Labels](#26-addremove-labels)
+27. [My Tasks (Dashboard)](#27-my-tasks-dashboard)
+
+### Comment Flows (3 flows)
+28. [Add Comment](#28-add-comment)
+29. [Reply Comment](#29-reply-comment)
+30. [Edit/Delete Comment](#30-editdelete-comment)
+
+### Notification Flows (4 flows)
+31. [View Notifications](#31-view-notifications)
+32. [Mark as Read](#32-mark-as-read)
+33. [Mark All as Read](#33-mark-all-as-read)
+34. [Real-time Notification Delivery](#34-real-time-notification-delivery)
+
+### Attachment Flows (2 flows)
+35. [Upload Attachment](#35-upload-attachment)
+36. [Delete Attachment](#36-delete-attachment)
 
 ---
 
-## 1. AUTHENTICATION MODULE
-
-### SD-1.1: Đăng ký tài khoản (Register)
+## 1. USER REGISTRATION
 
 ```mermaid
 sequenceDiagram
@@ -61,7 +103,9 @@ sequenceDiagram
     end
 ```
 
-### SD-1.2: Đăng nhập (Login)
+---
+
+## 2. USER LOGIN
 
 ```mermaid
 sequenceDiagram
@@ -103,7 +147,9 @@ sequenceDiagram
     end
 ```
 
-### SD-1.3: Refresh Token
+---
+
+## 3. OAUTH LOGIN (GOOGLE/GITHUB)
 
 ```mermaid
 sequenceDiagram
@@ -139,7 +185,9 @@ sequenceDiagram
     end
 ```
 
-### SD-1.4: OAuth Login (Google/GitHub)
+---
+
+## 4. FORGOT PASSWORD
 
 ```mermaid
 sequenceDiagram
@@ -175,7 +223,9 @@ sequenceDiagram
     FE-->>Guest: Dashboard
 ```
 
-### SD-1.5: Quên mật khẩu (Forgot Password)
+---
+
+## 5. RESET PASSWORD
 
 ```mermaid
 sequenceDiagram
@@ -207,7 +257,9 @@ sequenceDiagram
     FE-->>Guest: "Check your email"
 ```
 
-### SD-1.6: Đặt lại mật khẩu (Reset Password)
+---
+
+## 6. REFRESH TOKEN
 
 ```mermaid
 sequenceDiagram
@@ -240,9 +292,7 @@ sequenceDiagram
 
 ---
 
-## 2. USER MODULE
-
-### SD-2.1: Xem Profile
+## 7. VIEW PROFILE
 
 ```mermaid
 sequenceDiagram
@@ -266,7 +316,9 @@ sequenceDiagram
     FE-->>User: Display profile
 ```
 
-### SD-2.2: Cập nhật Profile
+---
+
+## 8. UPDATE PROFILE
 
 ```mermaid
 sequenceDiagram
@@ -289,7 +341,9 @@ sequenceDiagram
     FE-->>User: Show success, update UI
 ```
 
-### SD-2.3: Đổi mật khẩu
+---
+
+## 9. CHANGE PASSWORD
 
 ```mermaid
 sequenceDiagram
@@ -318,7 +372,9 @@ sequenceDiagram
     end
 ```
 
-### SD-2.4: Upload Avatar
+---
+
+## 10. UPLOAD AVATAR
 
 ```mermaid
 sequenceDiagram
@@ -347,9 +403,7 @@ sequenceDiagram
 
 ---
 
-## 3. WORKSPACE MODULE
-
-### SD-3.1: Tạo Workspace
+## 11. CREATE WORKSPACE
 
 ```mermaid
 sequenceDiagram
@@ -373,7 +427,9 @@ sequenceDiagram
     FE-->>User: Show new workspace
 ```
 
-### SD-3.2: Xem danh sách Workspaces
+---
+
+## 12. LIST WORKSPACES
 
 ```mermaid
 sequenceDiagram
@@ -394,7 +450,9 @@ sequenceDiagram
     FE-->>User: Display workspace list
 ```
 
-### SD-3.3: Mời thành viên (Invite Member)
+---
+
+## 13. INVITE MEMBER
 
 ```mermaid
 sequenceDiagram
@@ -430,7 +488,9 @@ sequenceDiagram
     end
 ```
 
-### SD-3.4: Chấp nhận lời mời (Accept Invitation)
+---
+
+## 14. ACCEPT INVITATION
 
 ```mermaid
 sequenceDiagram
@@ -462,7 +522,9 @@ sequenceDiagram
     end
 ```
 
-### SD-3.5: Quản lý vai trò (Update Member Role)
+---
+
+## 15. UPDATE MEMBER ROLE
 
 ```mermaid
 sequenceDiagram
@@ -485,7 +547,9 @@ sequenceDiagram
     FE-->>Owner: Role updated
 ```
 
-### SD-3.6: Xóa thành viên (Remove Member)
+---
+
+## 16. REMOVE MEMBER
 
 ```mermaid
 sequenceDiagram
@@ -513,9 +577,7 @@ sequenceDiagram
 
 ---
 
-## 4. PROJECT MODULE
-
-### SD-4.1: Tạo Project
+## 17. CREATE PROJECT
 
 ```mermaid
 sequenceDiagram
@@ -541,7 +603,9 @@ sequenceDiagram
     FE-->>Member: Show new project
 ```
 
-### SD-4.2: Xem chi tiết Project (Kanban Board)
+---
+
+## 18. VIEW PROJECT (KANBAN BOARD)
 
 ```mermaid
 sequenceDiagram
@@ -569,7 +633,9 @@ sequenceDiagram
     FE-->>Member: Render Kanban board
 ```
 
-### SD-4.3: Archive/Unarchive Project
+---
+
+## 19. ARCHIVE/UNARCHIVE PROJECT
 
 ```mermaid
 sequenceDiagram
@@ -592,9 +658,7 @@ sequenceDiagram
 
 ---
 
-## 5. TASK MODULE
-
-### SD-5.1: Tạo Task
+## 20. CREATE TASK
 
 ```mermaid
 sequenceDiagram
@@ -635,7 +699,9 @@ sequenceDiagram
     FE-->>Member: Add task to Kanban column
 ```
 
-### SD-5.2: Cập nhật Task
+---
+
+## 21. UPDATE TASK
 
 ```mermaid
 sequenceDiagram
@@ -662,7 +728,9 @@ sequenceDiagram
     FE-->>Member: Update task card
 ```
 
-### SD-5.3: Thay đổi trạng thái (Drag & Drop)
+---
+
+## 22. CHANGE TASK STATUS (DRAG & DROP)
 
 ```mermaid
 sequenceDiagram
@@ -699,7 +767,9 @@ sequenceDiagram
     FE-->>Member: Task moved to new column
 ```
 
-### SD-5.4: Gán người thực hiện (Assign Task)
+---
+
+## 23. ASSIGN TASK
 
 ```mermaid
 sequenceDiagram
@@ -734,7 +804,9 @@ sequenceDiagram
     end
 ```
 
-### SD-5.5: Hủy gán (Unassign Task)
+---
+
+## 24. UNASSIGN TASK
 
 ```mermaid
 sequenceDiagram
@@ -756,7 +828,9 @@ sequenceDiagram
     FE-->>Member: Remove avatar from task
 ```
 
-### SD-5.6: Quản lý Subtasks
+---
+
+## 25. MANAGE SUBTASKS
 
 ```mermaid
 sequenceDiagram
@@ -788,7 +862,9 @@ sequenceDiagram
     FE-->>Member: Update checkbox state
 ```
 
-### SD-5.7: Thêm/Xóa Labels
+---
+
+## 26. ADD/REMOVE LABELS
 
 ```mermaid
 sequenceDiagram
@@ -818,7 +894,9 @@ sequenceDiagram
     TC-->>FE: 204 No Content
 ```
 
-### SD-5.8: My Tasks (Dashboard)
+---
+
+## 27. MY TASKS (DASHBOARD)
 
 ```mermaid
 sequenceDiagram
@@ -853,9 +931,7 @@ sequenceDiagram
 
 ---
 
-## 6. COMMENT MODULE
-
-### SD-6.1: Thêm Comment
+## 28. ADD COMMENT
 
 ```mermaid
 sequenceDiagram
@@ -891,7 +967,9 @@ sequenceDiagram
     FE-->>Member: Display new comment
 ```
 
-### SD-6.2: Reply Comment
+---
+
+## 29. REPLY COMMENT
 
 ```mermaid
 sequenceDiagram
@@ -917,7 +995,9 @@ sequenceDiagram
     FE-->>Member: Display threaded reply
 ```
 
-### SD-6.3: Sửa/Xóa Comment
+---
+
+## 30. EDIT/DELETE COMMENT
 
 ```mermaid
 sequenceDiagram
@@ -959,9 +1039,7 @@ sequenceDiagram
 
 ---
 
-## 7. NOTIFICATION MODULE
-
-### SD-7.1: Xem Notifications
+## 31. VIEW NOTIFICATIONS
 
 ```mermaid
 sequenceDiagram
@@ -982,7 +1060,9 @@ sequenceDiagram
     FE-->>User: Display notification list
 ```
 
-### SD-7.2: Đánh dấu đã đọc
+---
+
+## 32. MARK AS READ
 
 ```mermaid
 sequenceDiagram
@@ -1003,7 +1083,9 @@ sequenceDiagram
     FE-->>User: Open task/comment
 ```
 
-### SD-7.3: Mark All as Read
+---
+
+## 33. MARK ALL AS READ
 
 ```mermaid
 sequenceDiagram
@@ -1023,7 +1105,9 @@ sequenceDiagram
     FE-->>User: Clear badge, update list
 ```
 
-### SD-7.4: Real-time Notification Delivery
+---
+
+## 34. REAL-TIME NOTIFICATION DELIVERY
 
 ```mermaid
 sequenceDiagram
@@ -1056,9 +1140,7 @@ sequenceDiagram
 
 ---
 
-## 8. ATTACHMENT MODULE
-
-### SD-8.1: Upload Attachment
+## 35. UPLOAD ATTACHMENT
 
 ```mermaid
 sequenceDiagram
@@ -1087,7 +1169,9 @@ sequenceDiagram
     FE-->>Member: Show attached file
 ```
 
-### SD-8.2: Delete Attachment
+---
+
+## 36. DELETE ATTACHMENT
 
 ```mermaid
 sequenceDiagram
@@ -1121,16 +1205,24 @@ sequenceDiagram
 
 ---
 
-## 9. TỔNG KẾT
+## SUMMARY
 
-| Module | Số lượng Diagrams | Mô tả |
-|--------|-------------------|-------|
-| Authentication | 6 | Register, Login, Refresh, OAuth, Forgot/Reset Password |
-| User | 4 | Profile, Update, Change Password, Avatar |
-| Workspace | 6 | CRUD, Invite, Accept, Roles, Remove Member |
-| Project | 3 | Create, View Kanban, Archive |
-| Task | 8 | CRUD, Status, Assign, Subtasks, Labels, My Tasks |
-| Comment | 3 | Create, Reply, Edit/Delete |
-| Notification | 4 | List, Mark Read, Mark All, Real-time |
-| Attachment | 2 | Upload, Delete |
-| **Total** | **36** | Tất cả chức năng chính |
+Total Sequence Diagrams: **36 flows** organized by individual use case
+
+| Category | Flows | Count |
+|----------|-------|-------|
+| Authentication | User Registration, User Login, OAuth Login, Forgot Password, Reset Password, Refresh Token | 6 |
+| User Profile | View Profile, Update Profile, Change Password, Upload Avatar | 4 |
+| Workspace Management | Create, List, Invite, Accept, Update Role, Remove Member | 6 |
+| Project Management | Create, View (Kanban), Archive | 3 |
+| Task Management | Create, Update, Status Change, Assign, Unassign, Subtasks, Labels, My Tasks | 8 |
+| Comment Management | Add, Reply, Edit/Delete | 3 |
+| Notifications | View, Mark Read, Mark All, Real-time | 4 |
+| Attachments | Upload, Delete | 2 |
+| **Total** | | **36** |
+
+### Improvement Notes
+- v1.0 → v2.0: Separated flows by individual use case instead of grouping by module
+- Each flow now has clear, independent sequence diagram showing the specific workflow
+- Better for understanding individual features and their interactions
+- Easier to reference specific flows for development/testing

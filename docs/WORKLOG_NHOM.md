@@ -267,3 +267,37 @@
 - BUG-U-001: Multer fileFilter upload `.txt` trả HTTP 500 thay vì 400 → cần fix trước khi merge
 - Ch2 (TypeScript cơ bản) vẫn chưa viết → cần phân công rõ ràng
 - Branch structure chưa chuẩn (`feature` nhánh từ `main` thay vì `develop`) → Đạt có plan fix, chờ confirm
+
+---
+
+## Tuần 8: 23/03 - 29/03
+
+**Công việc đã làm ở tuần trước:**
+- Đạt hoàn tất Phase 2 và bàn giao skeleton Phase 3.
+- Vy bắt đầu code WorkspaceModule.
+- Phú chuẩn bị DTO/permission cho Task Module.
+- Huyền setup hạ tầng realtime/Redis.
+
+**Công việc đã làm ở tuần này:**
+
+| Thành viên | Công việc |
+|:---|:---|
+| Đạt | Review code Workspace/Task, hỗ trợ merge cấu hình Prisma & TransformInterceptor sau khi tách module; chuẩn bị checklist cải thiện bảo mật chung (rate limit, captcha) để đội triển khai tuần tới. |
+| Vy | Hoàn thiện toàn bộ **Workspace Module**: CRUD + invite/accept, quản lý role (change role, kick, leave), validate quyền OWNER/ADMIN, cập nhật Hoppscotch collection và tài liệu API. Tạo draft PR `feature/(dat-vy)-workspace-module`. |
+| Phú | Triển khai **Task Module**: toàn bộ endpoint CRUD, filter nâng cao (status/priority/label/dueDate/pagination), status transition, assign/unassign, label attach/detach, subtask CRUD. Viết test flow tự kiểm bằng Hoppscotch, chuẩn bị update RBAC guard cho tuần sau. |
+| Huyền | Nhận nhiệm vụ xây các module còn thiếu: Comments, Label Catalog, Notifications, Dashboard/Search, Activity Log, OAuth integration. Lên outline kiến trúc common layer (throttling middleware, standard response formatter, feature flags) và khảo sát storage cho attachments. |
+
+**Công việc sẽ làm ở tuần tới:**
+- Vy: bổ sung chuyển quyền Owner, activity log, vai trò "viewer", và quota invite theo spec mới.
+- Phú: thêm attachments, drag-drop reorder, duplicate/move task và time tracking; mở rộng FilterTaskDto multi-status + caching.
+- Huyền: bắt đầu Comment + Notification module, dựng Label CRUD workspace-level, chuẩn bị OAuth Google/GitHub và dashboard APIs.
+- Đạt: hoàn thiện Phase 3 remaining steps (PermissionService, ContextInterceptor), review & merge PRs, chuẩn hóa branch workflow (`develop` + feature branches) và hỗ trợ viết Ch2.
+
+**Buổi họp nhóm:**
+- Thời gian: 21h 25/03/2026 (Thứ Tư)
+- Nội dung: rà lại backlog còn thiếu (Comment, Label, Notification, Dashboard), phân công cải tiến module hiện có (Auth/User/Workspace/Project/Task), thống nhất quy trình test Hoppscotch + checklist review trước khi mở PR.
+
+**Các công việc đang vướng mắc:**
+- Chưa có storage service chuẩn cho file đính kèm → Huyền đề xuất nghiên cứu S3-compatible trước khi Phú triển khai attachments.
+- Ch2 (TypeScript cơ bản) vẫn để trống → Đạt sẽ draft, các thành viên review bổ sung ví dụ.
+- Chưa có chuẩn logging/activity log cho workspace → cần thống nhất format trước khi Vy/Huyền xây module mới.

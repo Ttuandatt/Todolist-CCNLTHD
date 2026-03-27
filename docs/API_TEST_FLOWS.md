@@ -305,3 +305,479 @@
 - [ ] 2.7 — Upload avatar không có token (401)
 - [ ] 2.8 — Tất cả endpoints không có token (401)
 - [ ] 2.8 — Tất cả endpoints token sai (401)
+
+---
+
+# 3. Workspace Module (`/workspaces/*`)
+
+> Các API: CRUD, invite members, role management, activity log
+> **Tất cả endpoint đều cần JWT token**
+
+---
+
+## 3.1. Tạo Workspace — Happy path
+
+> **Điều kiện:** Đã có account, đã login
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/auth/login` | `{"email":"ws@test.com","password":"Password@123"}` | `200` | Lưu `accessToken` |
+| 2 | `POST` | `/workspaces` | Header + `{"name":"My Workspace","description":"Team project"}` | `201` — trả workspace object | Lưu `workspaceId` |
+| 3 | `GET` | `/workspaces/{{workspaceId}}` | `Bearer {{accessToken}}` | `200` — workspace details | Owner = user vừa tạo |
+
+**Kiểm tra response bước 2 có fields:**
+- `id`, `name`, `description`, `ownerId`, `createdAt`, `updatedAt`
+- `ownerId` = user ID của người login
+
+---
+
+## 3.2. Xem danh sách Workspace
+
+> **Điều kiện:** Đã tạo ≥2 workspace từ Flow 3.1
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `GET` | `/workspaces` | `Bearer {{accessToken}}` | `200` — array workspaces |
+| 2 | `GET` | `/workspaces?page=1&limit=10` | `Bearer {{accessToken}}` | `200` — pagination |
+
+**Kiểm tra:**
+- Array có ≥2 items
+- Mỗi item có fields: `id`, `name`, `ownerId`, `memberCount`, `myRole`
+
+---
+
+## 3.3. Cập nhật Workspace
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/workspaces/{{workspaceId}}` | Header + `{"name":"Updated WS","description":"New desc"}` | `200` — cả 2 fields cập nhật |
+| 2 | `GET` | `/workspaces/{{workspaceId}}` | `Bearer {{accessToken}}` | `200` — verify changes |
+| 3 | `PATCH` | `/workspaces/{{workspaceId}}` | Header + `{"name":"aaa..."}` (101 ký tự) | `400` — name max 100 ký tự |
+
+---
+
+## 3.4. Xóa Workspace — Only Owner
+
+> **Điều kiện:** Đã tạo workspace từ Flow 3.1, owner = current user
+
+| Bước | Method | Endpoint | Header | Expected | Ghi chú |
+|------|--------|----------|--------|----------|---------|
+| 1 | `DELETE` | `/workspaces/{{workspaceId}}` | `Bearer {{accessToken}}` | `200` — `"Workspace deleted"` | |
+| 2 | `GET` | `/workspaces/{{workspaceId}}` | `Bearer {{accessToken}}` | `404` — workspace không tồn tại | Verify delete |
+
+---
+
+## 3.5. Mời thành viên vào Workspace
+
+> **Điều kiện:** Có workspace, owner permission, mục đích invite user khác
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/auth/register` | `{"email":"member@test.com","password":"Password@123","fullname":"Member","displayName":"M"}` | `201` | Lưu `memberId` |
+| 2 | `POST` | `/workspaces/{{workspaceId}}/invite` | Header + `{"email":"member@test.com","role":"MEMBER"}` | `200` — tạo `WorkspaceInvitation` | Invitation pending |
+| 3 | `POST` | `/auth/login` | `{"email":"member@test.com","password":"Password@123"}` | `200` | Lưu token member |
+| 4 | `GET` | `/workspaces/{{workspaceId}}/invitations` | Member's token | `200` — thấy invitation từ owner | |
+| 5 | `POST` | `/workspaces/{{workspaceId}}/invitations/accept` | Member's token | `200` — `"Joined workspace"` | Status → ACCEPTED |
+| 6 | `GET` | `/workspaces/{{workspaceId}}/members` | Owner's token | `200` — members list gồm owner + member | |
+
+---
+
+## 3.6. Quản lý vai trò trong Workspace
+
+> **Điều kiện:** Workspace có ≥2 members (owner + member từ Flow 3.5)
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/workspaces/{{workspaceId}}/members/{{memberId}}/role` | Owner's header + `{"role":"ADMIN"}` | `200` — member → ADMIN |
+| 2 | `GET` | `/workspaces/{{workspaceId}}/members` | Owner's header | `200` — member role = ADMIN |
+| 3 | `PATCH` | `/workspaces/{{workspaceId}}/members/{{memberId}}/role` | Owner's header + `{"role":"MEMBER"}` | `200` — ADMIN → MEMBER |
+| 4 | `DELETE` | `/workspaces/{{workspaceId}}/members/{{memberId}}` | Owner's header | `200` — `"Member removed"` | Kick out member |
+| 5 | `GET` | `/workspaces/{{workspaceId}}/members` | Owner's header | `200` — members list chỉ còn owner | Verify remove |
+
+---
+
+## 3.7. Công việc Workspace (Activity Log)
+
+> **Mục đích:** Xem lịch sử thay đổi workspace
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `GET` | `/workspaces/{{workspaceId}}/activity` | `Bearer {{accessToken}}` | `200` — list activities |
+| 2 | `PATCH` | `/workspaces/{{workspaceId}}` | Header + `{"name":"Changed WS"}` | `200` — update |
+| 3 | `GET` | `/workspaces/{{workspaceId}}/activity` | `Bearer {{accessToken}}` | `200` — có mới activity (type: UPDATE) | |
+
+**Kiểm tra activity log:**
+- Fields: `id`, `workspaceId`, `userId`, `action`, `changes`, `createdAt`
+- Actions: `CREATE`, `UPDATE`, `DELETE`, `INVITE`, `ACCEPT`, `REMOVE`, `CHANGE_ROLE`
+
+---
+
+## 3.8. Chuyển quyền Owner (Transfer Ownership)
+
+> **Điều kiện:** Workspace có owner + 1 admin khác
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/workspaces/{{workspaceId}}/transfer-owner` | Owner's header + `{"newOwnerId":"{{adminId}}"}` | `200` — transfer thành công |
+| 2 | `GET` | `/workspaces/{{workspaceId}}` | Owner's header | `200` — `ownerId` = adminId |
+| 3 | `PATCH` | `/workspaces/{{workspaceId}}/transfer-owner` | Old owner's header + `{"newOwnerId":"..."}` | `403` — không còn quyền | Validate only new owner can change |
+
+---
+
+## 3.9. Workspace Permissions — Error cases
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `DELETE` | `/workspaces/{{workspaceId}}` | Member's token | `403` — chỉ owner được xóa | Forbidden |
+| 2 | `PATCH` | `/workspaces/{{workspaceId}}/members/{{memberId}}/role` | Member's token | `403` — chỉ owner/admin được change role | |
+| 3 | `POST` | `/workspaces/invalid-id/invite` | Owner's header + `{"email":"new@test.com","role":"MEMBER"}` | `404` — workspace không tồn tại | |
+
+---
+
+### Checklist Workspace Module
+
+- [ ] 3.1 — Create workspace happy path (201)
+- [ ] 3.1 — Get workspace detail (200)
+- [ ] 3.2 — List workspaces (200)
+- [ ] 3.2 — List with pagination (200)
+- [ ] 3.3 — Update workspace name + description (200)
+- [ ] 3.3 — Update workspace verify changes (200)
+- [ ] 3.3 — Update workspace name vượt 100 ký tự (400)
+- [ ] 3.4 — Delete workspace owner can delete (200)
+- [ ] 3.4 — Get deleted workspace 404 (404)
+- [ ] 3.5 — Invite member happy path (200)
+- [ ] 3.5 — Accept invitation (200)
+- [ ] 3.5 — Get members list-after join (200)
+- [ ] 3.6 — Change member role to ADMIN (200)
+- [ ] 3.6 — Change role ADMIN → MEMBER (200)
+- [ ] 3.6 — Remove member from workspace (200)
+- [ ] 3.6 — Verify member removed (200)
+- [ ] 3.7 — Get activity log (200)
+- [ ] 3.7 — Update triggers activity log (200)
+- [ ] 3.8 — Transfer ownership (200)
+- [ ] 3.8 — Verify new owner (200)
+- [ ] 3.8 — Old owner cannot change role (403)
+- [ ] 3.9 — Member cannot delete workspace (403)
+- [ ] 3.9 — Member cannot change role (403)
+- [ ] 3.9 — Delete invalid workspace (404)
+
+---
+
+# 4. Project Module (`/projects/*`)
+
+> Các API: CRUD, workspace relation, RBAC
+> **Tất cả endpoint đều cần JWT token**
+
+---
+
+## 4.1. Tạo Project
+
+> **Điều kiện:** Có workspace từ Flow 3.1, owner permission
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/projects` | Header + `{"name":"Project A","description":"First project","workspaceId":"{{workspaceId}}"}` | `201` — trả project object | Lưu `projectId` |
+| 2 | `GET` | `/projects/{{projectId}}` | `Bearer {{accessToken}}` | `200` — project details | |
+
+**Kiểm tra response:**
+- `id`, `name`, `description`, `workspaceId`, `createdAt`, `updatedAt`
+- `workspaceId` match workspace được chỉ định
+
+---
+
+## 4.2. Xem danh sách Project trong Workspace
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `GET` | `/projects?workspaceId={{workspaceId}}` | `Bearer {{accessToken}}` | `200` — trả array projects |
+| 2 | `GET` | `/projects?workspaceId={{workspaceId}}&page=1&limit=10` | `Bearer {{accessToken}}` | `200` — pagination |
+
+**Kiểm tra:**
+- Array có ≥1 item
+- Tất cả projects có `workspaceId` = query param
+
+---
+
+## 4.3. Cập nhật Project
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/projects/{{projectId}}` | Header + `{"name":"Updated Project","description":"New desc"}` | `200` — cả 2 fields cập nhật |
+| 2 | `GET` | `/projects/{{projectId}}` | `Bearer {{accessToken}}` | `200` — verify changes |
+
+---
+
+## 4.4. Xóa Project
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `DELETE` | `/projects/{{projectId}}` | `Bearer {{accessToken}}` | `200` — `"Project deleted"` |
+| 2 | `GET` | `/projects/{{projectId}}` | `Bearer {{accessToken}}` | `404` — project không tồn tại |
+
+---
+
+## 4.5. Project RBAC — Member Permission
+
+> **Điều kiện:** Workspace có member + project, member role = MEMBER
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `POST` | `/projects` | Owner's header + body | `201` | Chỉ owner/admin tạo được |
+| 2 | `POST` | `/projects` | Member's header + body | `403` — chỉ OWNER/ADMIN được tạo | Forbidden |
+| 3 | `GET` | `/projects/{{projectId}}` | Member's header | `200` — member vẫn xem được | Read ok |
+| 4 | `PATCH` | `/projects/{{projectId}}` | Member's header + body | `403` — chỉ OWNER/ADMIN được sửa | Forbidden |
+
+---
+
+### Checklist Project Module
+
+- [ ] 4.1 — Create project happy path (201)
+- [ ] 4.1 — Get project detail (200)
+- [ ] 4.2 — List projects by workspace (200)
+- [ ] 4.2 — List with pagination (200)
+- [ ] 4.3 — Update project (200)
+- [ ] 4.3 — Verify changes (200)
+- [ ] 4.4 — Delete project (200)
+- [ ] 4.4 — Get deleted project 404 (404)
+- [ ] 4.5 — Only owner/admin create (403)
+- [ ] 4.5 — Member can read (200)
+- [ ] 4.5 — Member cannot update (403)
+
+---
+
+# 5. Task Module (`/tasks/*`)
+
+> Các API: CRUD, assignment, labels, status, filtering, attachments
+> **Tất cả endpoint đều cần JWT token**
+
+---
+
+## 5.1. Tạo Task
+
+> **Điều kiện:** Có project từ Flow 4.1, owner permission
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks` | Header + `{"title":"Task 1","description":"Do something","projectId":"{{projectId}}","status":"TODO","priority":"HIGH"}` | `201` — task object | Lưu `taskId` |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — task details | |
+
+**Kiểm tra response:**
+- `id`, `title`, `description`, `projectId`, `status`, `priority`, `createdAt`, `updatedAt`
+
+---
+
+## 5.2. Xem danh sách Task trong Project
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `GET` | `/tasks?projectId={{projectId}}` | `Bearer {{accessToken}}` | `200` — trả array tasks |
+| 2 | `GET` | `/tasks?projectId={{projectId}}&page=1&limit=20` | `Bearer {{accessToken}}` | `200` — pagination |
+
+**Kiểm tra:**
+- Array tasks có field: `id`, `title`, `priority`, `status`, `assignee`, `dueDate`
+
+---
+
+## 5.3. Cập nhật Task
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/tasks/{{taskId}}` | Header + `{"title":"Updated title","description":"New desc","priority":"LOW"}` | `200` — cập nhật |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — verify changes |
+
+---
+
+## 5.4. Thay đổi trạng thái Task
+
+> **Mục đích:** Workflow task: TODO → IN_PROGRESS → DONE
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/tasks/{{taskId}}/status` | Header + `{"status":"IN_PROGRESS"}` | `200` — status thay đổi |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — status = IN_PROGRESS |
+| 3 | `PATCH` | `/tasks/{{taskId}}/status` | Header + `{"status":"DONE"}` | `200` — status = DONE |
+
+---
+
+## 5.5. Gán Task cho Assignee
+
+> **Điều kiện:** Workspace có ≥1 member khác
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks/{{taskId}}/assign` | Header + `{"userId":"{{memberId}}"}` | `200` — task.assigneeId = memberId | |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — assignee info in response | |
+| 3 | `DELETE` | `/tasks/{{taskId}}/assign` | `Bearer {{accessToken}}` | `200` — unassign (assigneeId = null) | |
+
+---
+
+## 5.6. Thêm/Xóa Label cho Task
+
+> **Điều kiện:** Có label catalog trong workspace
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks/{{taskId}}/labels` | Header + `{"labelId":"{{labelId}}"}` | `201` — label attached | |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — labels array non-empty | |
+| 3 | `DELETE` | `/tasks/{{taskId}}/labels/{{labelId}}` | `Bearer {{accessToken}}` | `200` — label removed | |
+| 4 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — labels array empty | |
+
+---
+
+## 5.7. Filter & Search Task
+
+> **Mục đích:** Test advanced filtering
+
+| Bước | Method | Endpoint | Header | Expected |
+|------|--------|----------|--------|----------|
+| 1 | `GET` | `/tasks?projectId={{projectId}}&status=TODO` | `Bearer {{accessToken}}` | `200` — chỉ TODO tasks |
+| 2 | `GET` | `/tasks?projectId={{projectId}}&priority=HIGH,CRITICAL` | `Bearer {{accessToken}}` | `200` — multi-priority filter |
+| 3 | `GET` | `/tasks?projectId={{projectId}}&assigneeId={{userId}}` | `Bearer {{accessToken}}` | `200` — tasks gán cho user |
+| 4 | `GET` | `/tasks?projectId={{projectId}}&search=keyword` | `Bearer {{accessToken}}` | `200` — search by title/description |
+| 5 | `GET` | `/tasks?projectId={{projectId}}&sort=dueDate:asc` | `Bearer {{accessToken}}` | `200` — sorted by due date |
+
+---
+
+## 5.8. Upload Attachment cho Task
+
+> **Điều kiện:** Task tạo từ Flow 5.1
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks/{{taskId}}/attachments` | Header + form-data: `file` = PDF (< 10MB) | `201` — attachment object | Lưu `attachmentId` |
+| 2 | `GET` | `/tasks/{{taskId}}/attachments` | `Bearer {{accessToken}}` | `200` — list attachments | |
+| 3 | `DELETE` | `/tasks/{{taskId}}/attachments/{{attachmentId}}` | `Bearer {{accessToken}}` | `200` — attachment deleted | |
+
+---
+
+## 5.9. Subtask CRUD
+
+> **Mục đích:** Tạo, cập nhật, xóa subtask trong task
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks/{{taskId}}/subtasks` | Header + `{"title":"Subtask 1","description":"Do this first"}` | `201` — subtask object | Lưu `subtaskId` |
+| 2 | `GET` | `/tasks/{{taskId}}/subtasks` | `Bearer {{accessToken}}` | `200` — list subtasks | |
+| 3 | `PATCH` | `/tasks/{{taskId}}/subtasks/{{subtaskId}}` | Header + `{"title":"Updated subtask"}` | `200` — cập nhật | |
+| 4 | `PATCH` | `/tasks/{{taskId}}/subtasks/{{subtaskId}}/complete` | `Bearer {{accessToken}}` | `200` — mark as complete | |
+| 5 | `DELETE` | `/tasks/{{taskId}}/subtasks/{{subtaskId}}` | `Bearer {{accessToken}}` | `200` — subtask deleted | |
+
+---
+
+## 5.10. Drag-Drop Reorder Task
+
+> **Mục đích:** Thay đổi thứ tự task trong project
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/tasks/{{taskId1}}/reorder` | Header + `{"order":1}` | `200` — set order = 1 |
+| 2 | `PATCH` | `/tasks/{{taskId2}}/reorder` | Header + `{"order":2}` | `200` — set order = 2 |
+| 3 | `GET` | `/tasks?projectId={{projectId}}&sort=order:asc` | `Bearer {{accessToken}}` | `200` — tasks sorted by order |
+
+---
+
+## 5.11. Duplicate Task
+
+> **Mục đích:** Copy task → new task with same labels/description
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `POST` | `/tasks/{{taskId}}/duplicate` | Header + `{"newTitle":"Copy of..."}` | `201` — new task object |
+| 2 | `GET` | `/tasks?projectId={{projectId}}` | `Bearer {{accessToken}}` | `200` — array có cả task gốc + copy |
+
+---
+
+## 5.12. Move Task (Between Projects)
+
+> **Điều kiện:** Workspace có ≥2 projects
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/tasks/{{taskId}}/move` | Header + `{"targetProjectId":"{{projectId2}}"}` | `200` — task.projectId = projectId2 |
+| 2 | `GET` | `/tasks?projectId={{projectId}}` | `Bearer {{accessToken}}` | `200` — task không còn ở project 1 |
+| 3 | `GET` | `/tasks?projectId={{projectId2}}` | `Bearer {{accessToken}}` | `200` — task ở project 2 |
+
+---
+
+## 5.13. Time Tracking
+
+> **Mục đích:** Log time spent on task
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `PATCH` | `/tasks/{{taskId}}/time-spent` | Header + `{"minutes":30}` | `200` — timeSpent += 30 |
+| 2 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — timeSpent = 30 |
+| 3 | `PATCH` | `/tasks/{{taskId}}/time-spent` | Header + `{"minutes":20}` | `200` — timeSpent += 20 |
+| 4 | `GET` | `/tasks/{{taskId}}` | `Bearer {{accessToken}}` | `200` — timeSpent = 50 |
+
+---
+
+## 5.14. Task Validation & Error cases
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `POST` | `/tasks` | Header + `{"title":"","projectId":"..."}` | `400` — title required |
+| 2 | `POST` | `/tasks` | Header + `{"title":"Task","projectId":"invalid-id"}` | `404` — project not found |
+| 3 | `PATCH` | `/tasks/invalid-id` | Header + `{"title":"New"}` | `404` — task not found |
+| 4 | `POST` | `/tasks` | No auth header | `401` — Unauthorized |
+
+---
+
+### Checklist Task Module
+
+- [ ] 5.1 — Create task happy path (201)
+- [ ] 5.1 — Get task detail (200)
+- [ ] 5.2 — List tasks by project (200)
+- [ ] 5.2 — List with pagination (200)
+- [ ] 5.3 — Update task (200)
+- [ ] 5.3 — Verify changes (200)
+- [ ] 5.4 — Update status TODO→IN_PROGRESS (200)
+- [ ] 5.4 — Update status IN_PROGRESS→DONE (200)
+- [ ] 5.5 — Assign task to member (200)
+- [ ] 5.5 — Unassign task (200)
+- [ ] 5.6 — Add label to task (201)
+- [ ] 5.6 — Remove label from task (200)
+- [ ] 5.7 — Filter by status (200)
+- [ ] 5.7 — Filter by priority multi (200)
+- [ ] 5.7 — Filter by assignee (200)
+- [ ] 5.7 — Search by keyword (200)
+- [ ] 5.7 — Sort by due date (200)
+- [ ] 5.8 — Upload attachment (201)
+- [ ] 5.8 — Get attachments list (200)
+- [ ] 5.8 — Delete attachment (200)
+- [ ] 5.9 — Create subtask (201)
+- [ ] 5.9 — Get subtasks list (200)
+- [ ] 5.9 — Update subtask (200)
+- [ ] 5.9 — Complete subtask (200)
+- [ ] 5.9 — Delete subtask (200)
+- [ ] 5.10 — Reorder task set order (200)
+- [ ] 5.10 — List sorted by order (200)
+- [ ] 5.11 — Duplicate task (201)
+- [ ] 5.11 — Verify duplicate in list (200)
+- [ ] 5.12 — Move task to another project (200)
+- [ ] 5.12 — Verify task not in old project (200)
+- [ ] 5.12 — Verify task in new project (200)
+- [ ] 5.13 — Add time spent (200)
+- [ ] 5.13 — Accumulate time spent (200)
+- [ ] 5.14 — Create task title empty (400)
+- [ ] 5.14 — Create task project not found (404)
+- [ ] 5.14 — Update task not found (404)
+- [ ] 5.14 — Create without auth (401)
+
+---
+
+# 📊 Summary: Test Coverage
+
+| Module | # Flows | # Test Cases | Status |
+|--------|---------|--------------|--------|
+| **Auth** | 8 | 21 | ✅ Implemented |
+| **User** | 8 | 22 | ✅ Implemented |
+| **Workspace** | 9 | 23 | 🔄 In Progress |
+| **Project** | 5 | 11 | ⏳ Pending |
+| **Task** | 14 | 43 | ⏳ Pending |
+| **TOTAL** | **44** | **120**+ | — |
+
+---
+
+**Last Updated:** 27/03/2026
+**Version:** 2.0 (Added Workspace, Project, Task flows)
