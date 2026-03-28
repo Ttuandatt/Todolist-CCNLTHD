@@ -17,7 +17,7 @@ import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TaskLabelDto } from './dto/task-label.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller()
 export class TaskController {

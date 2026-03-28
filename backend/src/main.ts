@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
-import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { TransformResponseInterceptor } from './shared/common/interceptors/transform-response.interceptor';
+import { LoggingInterceptor } from './shared/common/interceptors/logging.interceptor';
+import { HttpExceptionFilter } from './shared/common/filters/http-exception.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';

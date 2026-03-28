@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
-import { PrismaService } from '../../prisma/prisma.service'; // Import PrismaService để kiểm tra InvalidatedToken (Token Blacklist)
+import { PrismaService } from '../../../shared/prisma/prisma.service'; // Import PrismaService để kiểm tra InvalidatedToken (Token Blacklist)
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

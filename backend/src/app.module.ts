@@ -7,10 +7,10 @@ import { APP_GUARD } from '@nestjs/core';
 // APP_GUARD — special token để đăng ký Guard GLOBAL qua module system
 // Khác với app.useGlobalGuards(): dùng APP_GUARD cho phép Guard dùng DI (inject Reflector)
 
-import { AuthModule } from './auth/auth.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { UserModule } from './user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { PrismaModule } from './shared/prisma/prisma.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { UserModule } from './modules/user/user.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { ProjectModule } from './modules/project/project.module';
 import { TaskModule } from './modules/task/task.module';

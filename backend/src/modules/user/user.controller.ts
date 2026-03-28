@@ -10,13 +10,13 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
 } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { avatarMulterConfig } from 'src/common/config/multer.config';
+import { avatarMulterConfig } from 'src/shared/common/config/multer.config';
 import { Max } from 'class-validator';
 
 @Controller('users') // Kết hợp với prefix /api/v1 trong main.ts → URL đầy đủ: /api/v1/users/...

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express'; // Import MulterModule để xử lý file upload
 
-import { avatarMulterConfig } from 'src/common/config/multer.config';
+import { avatarMulterConfig } from 'src/shared/common/config/multer.config';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 

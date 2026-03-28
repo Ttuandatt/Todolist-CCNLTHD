@@ -7,7 +7,7 @@ import {
 import * as bcrypt from 'bcrypt'; // Thư viện để mã hóa mật khẩu
 import { promises as fs, stat } from 'fs'; // Thư viện để làm việc với hệ thống file
 import { join } from 'path'; // Thư viện để làm việc với đường dẫn file
-import { PrismaService } from '../prisma/prisma.service'; // Service để tương tác với cơ sở dữ liệu thông qua Prisma
+import { PrismaService } from '../../shared/prisma/prisma.service'; // Service để tương tác với cơ sở dữ liệu thông qua Prisma
 import { UpdateProfileDto } from './dto/update-profile.dto'; // DTO để cập nhật thông tin hồ sơ người dùng
 import { ChangePasswordDto } from './dto/change-password.dto'; // DTO để thay đổi mật khẩu người dùng
 import { last } from 'rxjs';
