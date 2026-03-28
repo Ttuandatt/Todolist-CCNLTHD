@@ -16,7 +16,21 @@
       "Bash(tasklist /FI \"PID eq 12012\" /FO LIST)",
       "Bash(tasklist //FI \"PID eq 25744\")",
       "Bash(tasklist //FI \"PID eq 12012\")",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(find \"C:\\\\Users\\\\ACER\\\\Dropbox\\\\My PC \\(LAPTOP-UGP9QJUT\\)\\\\Documents\\\\ITstudies\\\\Todolist-CCNLTHD\\\\backend\\\\src\" -type d)",
+      "Bash(find \"C:\\\\Users\\\\ACER\\\\Dropbox\\\\My PC \\(LAPTOP-UGP9QJUT\\)\\\\Documents\\\\ITstudies\\\\Todolist-CCNLTHD\\\\backend\\\\src\" -type f)",
+      "Bash(mkdir -p src/modules)",
+      "Bash(mkdir -p src/shared)",
+      "Bash(cp -r src/auth src/modules/auth)",
+      "Bash(cp -r src/user src/modules/user)",
+      "Bash(mkdir -p src/shared/prisma)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(ls:*)",
+      "Bash(find 'C:\\\\Users\\\\ACER\\\\Dropbox\\\\My PC \\(LAPTOP-UGP9QJUT\\)\\\\Documents\\\\ITstudies\\\\Todolist-CCNLTHD\\\\backend\\\\src' -name mail* -o -name *mail*)",
+      "Bash(cp:*)"
     ]
   }
 }

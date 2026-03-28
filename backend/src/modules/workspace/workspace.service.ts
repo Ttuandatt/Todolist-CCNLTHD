@@ -1,12 +1,13 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service'; // Chỉnh đường dẫn cho đúng
+import { PrismaService } from '../../shared/prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private eventsService: EventsService) {}
 
   // 1. Tạo Workspace mới (Tự động thêm user làm OWNER)
   async create(userId: string, dto: CreateWorkspaceDto) {
@@ -191,6 +192,12 @@ export class WorkspaceService {
         data: { status: 'ACCEPTED', acceptedAt: new Date() },
       }),
     ]);
+
+    this.eventsService.emitToWorkspace(invite.workspaceId, 'member:joined', {
+      userId,
+      workspaceId: invite.workspaceId,
+      role: invite.role,
+    });
 
     return { message: 'Đã tham gia workspace thành công', workspaceId: invite.workspaceId };
   }

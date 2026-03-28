@@ -4,17 +4,18 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../shared/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { FilterTaskDto } from './dto/filter-task.dto';
 import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { TaskStatus, TaskPriority } from '@prisma/client';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class TaskService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private eventsService: EventsService) {}
 
   // ==================== HELPER: Kiểm tra membership ====================
 
@@ -86,7 +87,7 @@ export class TaskService {
     });
     const nextPosition = (maxPosition._max.position ?? 0) + 1;
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         title: dto.title,
         description: dto.description,
@@ -102,6 +103,9 @@ export class TaskService {
         createdBy: { select: { id: true, name: true, email: true } },
       },
     });
+
+    this.eventsService.emitToProject(projectId, 'task:created', task);
+    return task;
   }
 
   // ==================== 2. DANH SÁCH TASK (có filter, sort, pagination) ====================
@@ -265,7 +269,7 @@ export class TaskService {
       data.completedAt = null;
     }
 
-    return this.prisma.task.update({
+    const updatedTask = await this.prisma.task.update({
       where: { id: taskId },
       data,
       include: {
@@ -282,16 +286,21 @@ export class TaskService {
         },
       },
     });
+
+    this.eventsService.emitToTask(taskId, 'task:updated', updatedTask);
+    this.eventsService.emitToProject(updatedTask.projectId, 'task:updated', updatedTask);
+    return updatedTask;
   }
 
   // ==================== 5. XÓA TASK ====================
 
   async remove(userId: string, taskId: string) {
-    await this.checkTaskAccess(taskId, userId);
+    const { task } = await this.checkTaskAccess(taskId, userId);
 
     // Prisma cascade delete: subtasks, assignments, labels, comments, attachments
     await this.prisma.task.delete({ where: { id: taskId } });
 
+    this.eventsService.emitToProject(task.projectId, 'task:deleted', { id: taskId });
     return { message: 'Xóa task thành công' };
   }
 
@@ -309,13 +318,17 @@ export class TaskService {
       data.completedAt = null;
     }
 
-    return this.prisma.task.update({
+    const updatedTask = await this.prisma.task.update({
       where: { id: taskId },
       data,
       include: {
         createdBy: { select: { id: true, name: true, email: true } },
       },
     });
+
+    this.eventsService.emitToTask(taskId, 'task:updated', updatedTask);
+    this.eventsService.emitToProject(updatedTask.projectId, 'task:updated', updatedTask);
+    return updatedTask;
   }
 
   // ==================== 7. ASSIGN MEMBER ====================

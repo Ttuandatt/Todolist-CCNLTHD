@@ -4,8 +4,8 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { ChangeRoleDto } from './dto/change-role.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'; // Chỉnh đường dẫn cho đúng
-import { CurrentUser } from '../../auth/decorators/current-user.decorator'; // Chỉnh đường dẫn cho đúng
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard) // Yêu cầu phải có token đăng nhập cho MỌI endpoint ở đây
