@@ -1,0 +1,241 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TodoList Collaboration API (generated from Hoppscotch collection)",
+    "version": "1.0.0",
+    "description": "OpenAPI v3 specification generated to cover modules: Auth, User, Workspace, Project, Task, Comment, Notification, etc."
+  },
+  "servers": [
+    { "url": "http://localhost:3333/api/v1", "description": "Local" }
+  ],
+  "tags": [
+    { "name": "Auth" },
+    { "name": "User" },
+    { "name": "Workspace" },
+    { "name": "Project" },
+    { "name": "Task" },
+    { "name": "Comment" },
+    { "name": "Notification" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "GenericObject": { "type": "object", "additionalProperties": true },
+      "Error": { "type": "object", "properties": { "message": { "type": "string" } } }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register new user",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "401": { "description": "Unauthorized" } }
+      }
+    },
+    "/auth/refresh": { "post": { "tags": ["Auth"], "summary": "Refresh token", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/auth/logout": { "post": { "tags": ["Auth"], "summary": "Logout current session", "responses": { "200": { "description": "OK" } } } },
+
+    "/users/me": {
+      "get": { "tags": ["User"], "summary": "Get current profile", "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } } } },
+      "patch": { "tags": ["User"], "summary": "Update profile", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } }
+    },
+    "/users/me/change-password": { "patch": { "tags": ["User"], "summary": "Change password", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/users/me/avatar": { "post": { "tags": ["User"], "summary": "Upload avatar", "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "avatar": { "type": "string", "format": "binary" } } } } } }, "responses": { "201": { "description": "Created" } } } },
+
+    "/workspaces": {
+      "get": { "tags": ["Workspace"], "summary": "List workspaces", "responses": { "200": { "description": "OK" } } },
+      "post": { "tags": ["Workspace"], "summary": "Create workspace", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "201": { "description": "Created" } } }
+    },
+    "/workspaces/{workspaceId}": {
+      "get": { "tags": ["Workspace"], "summary": "Get workspace detail", "parameters": [{ "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } },
+      "patch": { "tags": ["Workspace"], "summary": "Update workspace", "parameters": [{ "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } },
+      "delete": { "tags": ["Workspace"], "summary": "Delete workspace", "parameters": [{ "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "No Content" } } }
+    },
+
+    "/workspaces/{workspaceId}/invite": { "post": { "tags": ["Workspace"], "summary": "Invite member", "parameters": [{ "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } } },
+    "/workspaces/accept-invite/{token}": { "post": { "tags": ["Workspace"], "summary": "Accept invite token", "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+
+    "/projects": { "post": { "tags": ["Project"], "summary": "Create project (use workspaceId query/body)", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "201": { "description": "Created" } } } },
+    "/workspaces/{workspaceId}/projects": { "get": { "tags": ["Project"], "summary": "List projects in workspace", "parameters": [{ "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/projects/{projectId}": { "get": { "tags": ["Project"], "summary": "Get project detail", "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } }, "patch": { "tags": ["Project"], "summary": "Update project", "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } } },
+
+    "/projects/{projectId}/tasks": { "post": { "tags": ["Task"], "summary": "Create task in project", "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "201": { "description": "Created" } } }, "get": { "tags": ["Task"], "summary": "List tasks in project", "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/tasks/{taskId}": { "get": { "tags": ["Task"], "summary": "Get task detail", "parameters": [{ "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } }, "patch": { "tags": ["Task"], "summary": "Update task", "parameters": [{ "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } }, "delete": { "tags": ["Task"], "summary": "Delete task", "parameters": [{ "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "No Content" } } } },
+
+    "/tasks/{taskId}/assign": { "post": { "tags": ["Task"], "summary": "Assign member to task", "parameters": [{ "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericObject" } } } }, "responses": { "200": { "description": "OK" } } } },
+
+    "/tasks/{taskId}/comments": {
+      "get": {
+        "tags": ["Comment"],
+        "summary": "List comments for a task",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/GenericObject" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Comment"],
+        "summary": "Create a comment for a task",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "content": { "type": "string" } },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenericObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{taskId}/comments/{parentId}/reply": {
+      "post": {
+        "tags": ["Comment"],
+        "summary": "Reply to a comment",
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "parentId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "content": { "type": "string" } },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenericObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/notifications": {
+      "get": {
+        "tags": ["Notification"],
+        "summary": "List notifications for current user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/GenericObject" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Notification"],
+        "summary": "Create notification (admin/test)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "title": { "type": "string" },
+                  "message": { "type": "string" },
+                  "userId": { "type": "string" }
+                },
+                "required": ["type", "title", "message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenericObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{notificationId}/read": {
+      "patch": {
+        "tags": ["Notification"],
+        "summary": "Mark notification as read",
+        "parameters": [
+          { "name": "notificationId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marked as read",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenericObject" }
+              }
+            }
+          }
+        }
+      }
+    }
+    }
+  }
+}

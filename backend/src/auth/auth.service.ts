@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private prisma: PrismaService,
+    private config: ConfigService,
   ) {}
 
   // ══════════════════════════════════════════════════════════════════════════════════════
@@ -279,16 +281,24 @@ export class AuthService {
     // 'sub' = subject — convention của JWT spec, đại diện cho "ai sở hữu token này"
 
     // Tạo 2 token song song bằng Promise.all (nhanh hơn tạo tuần tự)
+    const jwtSecret = this.config.get<string>('JWT_SECRET');
+    const jwtRefreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
+    if (!jwtSecret || !jwtRefreshSecret) {
+      throw new Error(
+        'JWT secrets are not defined. Set JWT_SECRET and JWT_REFRESH_SECRET in .env or environment.',
+      );
+    }
+
     const [accessToken, refreshToken] = await Promise.all([
       // Access Token: sống ngắn (15m), dùng secret chính
       this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_SECRET,
-        expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
+        secret: jwtSecret,
+        expiresIn: (this.config.get<string>('JWT_EXPIRES_IN') || '15m') as any,
       }),
       // Refresh Token: sống dài (7d), dùng secret riêng
       this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '15m') as any,
+        secret: jwtRefreshSecret,
+        expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
       }),
     ]);
 

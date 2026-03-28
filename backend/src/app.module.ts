@@ -14,6 +14,9 @@ import { UserModule } from './user/user.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { ProjectModule } from './modules/project/project.module';
 import { TaskModule } from './modules/task/task.module';
+import { EventsModule } from './modules/events/events.module';
+import { CommentModule } from './modules/comment/comment.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { TaskModule } from './modules/task/task.module';
     WorkspaceModule,
     ProjectModule,
     TaskModule,
+    EventsModule,
+    CommentModule,
+    NotificationModule,
   ],
   providers: [
     {

@@ -1,6 +1,3 @@
-// Prisma Schema for TodoList Collaboration
-// Based on ERD document - 13 entities
-
 generator client {
   provider   = "prisma-client-js"
   engineType = "library"
@@ -10,7 +7,312 @@ datasource db {
   provider = "postgresql"
 }
 
-// ==================== ENUMS ====================
+model User {
+  id                   String            @id @default(uuid())
+  email                String            @unique
+  password             String
+  name                 String
+  avatar               String?
+  status               UserStatus        @default(ACTIVE)
+  emailVerified        Boolean           @default(false)
+  lastLoginAt          DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  bio                  String?
+  displayName          String?
+  activityLogs         ActivityLog[]
+  attachments          Attachment[]
+  comments             Comment[]
+  actorNotifications   Notification[]    @relation("NotificationActor")
+  notifications        Notification[]    @relation("NotificationRecipient")
+  passwordResets       PasswordReset[]
+  createdProjects      Project[]
+  refreshTokens        RefreshToken[]
+  taskAssignments      TaskAssignment[]
+  createdTasks         Task[]
+  workspaceMemberships WorkspaceMember[]
+  ownedWorkspaces      Workspace[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Workspace {
+  id           String            @id @default(uuid())
+  name         String
+  description  String?
+  ownerId      String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  archived     Boolean           @default(false)
+  deletedAt    DateTime?
+  activityLogs ActivityLog[]
+  invites      WorkspaceInvite[]
+  labels       Label[]
+  projects     Project[]
+  members      WorkspaceMember[]
+  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String            @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole     @default(MEMBER)
+  joinedAt    DateTime          @default(now())
+  invites     WorkspaceInvite[] @relation("WorkspaceInviteInviter")
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  workspaceId String
+  createdById String
+  status      ProjectStatus @default(ACTIVE)
+  isPinned    Boolean       @default(false)
+  color       String        @default("#3B82F6")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model Task {
+  id             String           @id @default(uuid())
+  title          String
+  description    String?
+  projectId      String
+  createdById    String
+  status         TaskStatus       @default(TODO)
+  priority       TaskPriority     @default(NORMAL)
+  dueDate        DateTime?
+  startDate      DateTime?
+  completedAt    DateTime?
+  position       Int              @default(0)
+  estimatedHours Decimal?         @db.Decimal(5, 2)
+  actualHours    Decimal?         @db.Decimal(5, 2)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  attachments    Attachment[]
+  comments       Comment[]
+  subtasks       Subtask[]
+  assignments    TaskAssignment[]
+  labels         TaskLabel[]
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Subtask {
+  id          String   @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+model TaskAssignment {
+  id         String   @id @default(uuid())
+  taskId     String
+  userId     String
+  assignedAt DateTime @default(now())
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignments")
+}
+
+model Label {
+  id          String      @id @default(uuid())
+  name        String
+  color       String
+  workspaceId String
+  createdAt   DateTime    @default(now())
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       TaskLabel[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("labels")
+}
+
+model TaskLabel {
+  id      String @id @default(uuid())
+  taskId  String
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+  @@index([taskId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String
+  taskId    String
+  authorId  String
+  parentId  String?
+  isEdited  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  author    User      @relation(fields: [authorId], references: [id])
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+  taskId       String
+  uploadedById String
+  createdAt    DateTime @default(now())
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@index([uploadedById])
+  @@map("attachments")
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  type          NotificationType
+  title         String
+  message       String?
+  userId        String
+  actorId       String?
+  referenceId   String?
+  referenceType String?
+  isRead        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  actor         User?            @relation("NotificationActor", fields: [actorId], references: [id])
+  user          User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id          String            @id @default(uuid())
+  entityType  String
+  entityId    String
+  userId      String
+  workspaceId String
+  oldValue    Json?
+  newValue    Json?
+  createdAt   DateTime          @default(now())
+  action      ActivityLogAction
+  user        User              @relation(fields: [userId], references: [id])
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
+model WorkspaceInvite {
+  id                String           @id @default(uuid())
+  workspaceId       String
+  email             String
+  role              WorkspaceRole    @default(MEMBER)
+  token             String           @unique
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  invitedByMemberId String
+  revokedAt         DateTime?
+  status            InvitationStatus @default(PENDING)
+  invitedBy         WorkspaceMember  @relation("WorkspaceInviteInviter", fields: [invitedByMemberId], references: [id], onDelete: Cascade)
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, email, status])
+  @@index([email])
+  @@map("invitations")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model InvalidatedToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("invalidated_tokens")
+}
 
 enum UserStatus {
   ACTIVE
@@ -74,362 +376,4 @@ enum ActivityLogAction {
   INVITE_SENT
   INVITE_ACCEPTED
   INVITE_REVOKED
-}
-
-// ==================== MODELS ====================
-
-// 1. User - Người dùng hệ thống
-model User {
-  id            String     @id @default(uuid())
-  email         String     @unique
-  password      String
-  name          String
-  displayName   String?
-  bio           String?
-  avatar        String?
-  status        UserStatus @default(ACTIVE)
-  emailVerified Boolean    @default(false)
-  lastLoginAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  // Relations
-  ownedWorkspaces      Workspace[]
-  workspaceMemberships WorkspaceMember[]
-  createdProjects      Project[]
-  createdTasks         Task[]
-  taskAssignments      TaskAssignment[]
-  comments             Comment[]
-  attachments          Attachment[]
-  notifications        Notification[]      @relation("NotificationRecipient")
-  actorNotifications   Notification[]      @relation("NotificationActor")
-  activityLogs         ActivityLog[]
-  refreshTokens        RefreshToken[]
-  passwordResets       PasswordReset[]
-
-  @@index([email])
-  @@map("users")
-}
-
-// 2. Workspace - Không gian làm việc nhóm
-model Workspace {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  archived    Boolean  @default(false)
-  deletedAt   DateTime?
-  ownerId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  members      WorkspaceMember[]
-  projects     Project[]
-  labels       Label[]
-  activityLogs ActivityLog[]
-  invites      WorkspaceInvite[]
-
-  @@index([ownerId])
-  @@map("workspaces")
-}
-
-// 3. WorkspaceMember - Thành viên trong workspace
-model WorkspaceMember {
-  id          String        @id @default(uuid())
-  workspaceId String
-  userId      String
-  role        WorkspaceRole @default(MEMBER)
-  joinedAt    DateTime      @default(now())
-
-  // Relations
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invites   WorkspaceInvite[] @relation("WorkspaceInviteInviter")
-
-  @@unique([workspaceId, userId])
-  @@index([workspaceId])
-  @@index([userId])
-  @@map("workspace_members")
-}
-
-// 4. Project - Dự án trong workspace
-model Project {
-  id          String        @id @default(uuid())
-  name        String
-  description String?
-  workspaceId String
-  createdById String
-  status      ProjectStatus @default(ACTIVE)
-  isPinned    Boolean       @default(false)
-  color       String        @default("#3B82F6")
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  // Relations
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy User      @relation(fields: [createdById], references: [id])
-  tasks     Task[]
-
-  @@index([workspaceId])
-  @@index([createdById])
-  @@map("projects")
-}
-
-// 5. Task - Công việc cần thực hiện (Core Entity)
-model Task {
-  id             String       @id @default(uuid())
-  title          String
-  description    String?
-  projectId      String
-  createdById    String
-  status         TaskStatus   @default(TODO)
-  priority       TaskPriority @default(NORMAL)
-  dueDate        DateTime?
-  startDate      DateTime?
-  completedAt    DateTime?
-  position       Int          @default(0)
-  estimatedHours Decimal?     @db.Decimal(5, 2)
-  actualHours    Decimal?     @db.Decimal(5, 2)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  // Relations
-  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy   User             @relation(fields: [createdById], references: [id])
-  subtasks    Subtask[]
-  assignments TaskAssignment[]
-  labels      TaskLabel[]
-  comments    Comment[]
-  attachments Attachment[]
-
-  @@index([projectId])
-  @@index([createdById])
-  @@index([status])
-  @@index([dueDate])
-  @@map("tasks")
-}
-
-// 6. Subtask - Công việc con của task
-model Subtask {
-  id          String   @id @default(uuid())
-  taskId      String
-  title       String
-  isCompleted Boolean  @default(false)
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-
-  // Relations
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
-  @@map("subtasks")
-}
-
-// 7. TaskAssignment - Phân công task cho user
-model TaskAssignment {
-  id         String   @id @default(uuid())
-  taskId     String
-  userId     String
-  assignedAt DateTime @default(now())
-
-  // Relations
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, userId])
-  @@index([taskId])
-  @@index([userId])
-  @@map("task_assignments")
-}
-
-// 8. Label - Nhãn phân loại task (Workspace Level - Shared)
-model Label {
-  id          String   @id @default(uuid())
-  name        String
-  color       String
-  workspaceId String
-  createdAt   DateTime @default(now())
-
-  // Relations
-  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  tasks     TaskLabel[]
-
-  @@unique([workspaceId, name])
-  @@index([workspaceId])
-  @@map("labels")
-}
-
-// 9. TaskLabel - Liên kết task với label (Junction Table)
-model TaskLabel {
-  id      String @id @default(uuid())
-  taskId  String
-  labelId String
-
-  // Relations
-  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, labelId])
-  @@index([taskId])
-  @@index([labelId])
-  @@map("task_labels")
-}
-
-// 10. Comment - Bình luận trên task
-model Comment {
-  id        String   @id @default(uuid())
-  content   String
-  taskId    String
-  authorId  String
-  parentId  String?
-  isEdited  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  task    Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author  User      @relation(fields: [authorId], references: [id])
-  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies Comment[] @relation("CommentReplies")
-
-  @@index([taskId])
-  @@index([authorId])
-  @@index([parentId])
-  @@map("comments")
-}
-
-// 11. Attachment - File đính kèm
-model Attachment {
-  id           String   @id @default(uuid())
-  fileName     String
-  fileUrl      String
-  fileSize     Int
-  mimeType     String
-  taskId       String
-  uploadedById String
-  createdAt    DateTime @default(now())
-
-  // Relations
-  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploadedBy User @relation(fields: [uploadedById], references: [id])
-
-  @@index([taskId])
-  @@index([uploadedById])
-  @@map("attachments")
-}
-
-// 12. Notification - Thông báo
-model Notification {
-  id            String           @id @default(uuid())
-  type          NotificationType
-  title         String
-  message       String?
-  userId        String
-  actorId       String?
-  referenceId   String?
-  referenceType String?
-  isRead        Boolean          @default(false)
-  createdAt     DateTime         @default(now())
-
-  // Relations
-  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor User? @relation("NotificationActor", fields: [actorId], references: [id])
-
-  @@index([userId, isRead])
-  @@index([userId, createdAt])
-  @@map("notifications")
-}
-
-// 13. ActivityLog - Lịch sử hoạt động
-model ActivityLog {
-  id          String   @id @default(uuid())
-  action      ActivityLogAction
-  entityType  String
-  entityId    String
-  userId      String
-  workspaceId String
-  oldValue    Json?
-  newValue    Json?
-  createdAt   DateTime @default(now())
-
-  // Relations
-  user      User      @relation(fields: [userId], references: [id])
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId, createdAt])
-  @@index([userId])
-  @@index([entityType, entityId])
-  @@map("activity_logs")
-}
-
-// 14. WorkspaceInvite - Lời mời tham gia workspace
-model WorkspaceInvite {
-  id                 String            @id @default(uuid())
-  workspaceId        String
-  email              String
-  role               WorkspaceRole     @default(MEMBER)
-  status             InvitationStatus  @default(PENDING)
-  token              String            @unique
-  invitedByMemberId  String
-  expiresAt          DateTime
-  revokedAt          DateTime?
-  acceptedAt         DateTime?
-  createdAt          DateTime          @default(now())
-
-  // Relations
-  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedBy  WorkspaceMember @relation("WorkspaceInviteInviter", fields: [invitedByMemberId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId])
-  @@index([workspaceId, status])
-  @@index([workspaceId, email, status])
-  @@index([email])
-  @@map("invitations")
-}
-
-// 15. RefreshToken - Lưu trữ refresh token cho JWT
-model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-  @@map("refresh_tokens")
-}
-
-// 16. PasswordReset - Token đặt lại mật khẩu
-model PasswordReset {
-  id        String    @id @default(uuid())
-  userId    String
-  token     String    @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-  @@map("password_resets")
-}
-
-// 17. InvalidatedToken - Token Blacklist (thu hồi access token tức thì)
-model InvalidatedToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  expiresAt DateTime
-  reason    String?  // LOGOUT, BANNED, PASSWORD_CHANGED
-  createdAt DateTime @default(now())
-
-  @@index([expiresAt])
-  @@map("invalidated_tokens")
 }

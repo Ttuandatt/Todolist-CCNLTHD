@@ -1,1125 +1,3441 @@
-{
-    "openapi": "3.0.0",
-    "info": {
-        "title": "TodoList Collaboration API",
-        "description": "API collection cho dự án TodoList Collaboration — CCNLTHD",
-        "version": "1.1.0",
-        "contact": {
-            "name": "Tuan Dat"
-        }
-    },
-    "servers": [
-        {
-            "url": "http://localhost:3333/api/v1",
-            "description": "Local Development"
-        }
+[
+  {
+    "v": 11,
+    "id": "cmn7jx54c1vg9gy1mek0z50qb",
+    "name": "TodoList Collaboration API",
+    "folders": [
+      {
+        "v": 11,
+        "id": "cmn7jx54m1vgagy1mvmw8onbo",
+        "name": "Auth",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "authType": "none",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\",\n  \"fullname\": \"string\",\n  \"displayName\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Register new user",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/register",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"user\": {\n    \"id\": \"string\",\n    \"email\": \"string\",\n    \"name\": \"string\",\n    \"displayName\": \"string\",\n    \"avatar\": \"string\",\n    \"status\": \"string\",\n    \"bio\": \"string\"\n  },\n  \"tokens\": {\n    \"accessToken\": \"string\",\n    \"refreshToken\": \"string\",\n    \"expiresIn\": 0\n  }\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\",\n  \"fullname\": \"string\",\n  \"displayName\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Register new user",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/register",
+                  "requestVariables": []
+                }
+              },
+              "Conflict": {
+                "body": "",
+                "code": 409,
+                "name": "Conflict",
+                "status": "Conflict",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\",\n  \"fullname\": \"string\",\n  \"displayName\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Register new user",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/register",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5511vgcgy1ma4wy4ji6"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "authType": "none",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Login",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/login",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"user\": {\n    \"id\": \"string\",\n    \"email\": \"string\",\n    \"name\": \"string\",\n    \"displayName\": \"string\",\n    \"avatar\": \"string\",\n    \"status\": \"string\",\n    \"bio\": \"string\"\n  },\n  \"tokens\": {\n    \"accessToken\": \"string\",\n    \"refreshToken\": \"string\",\n    \"expiresIn\": 0\n  }\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Login",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/login",
+                  "requestVariables": []
+                }
+              },
+              "Unauthorized": {
+                "body": "",
+                "code": 401,
+                "name": "Unauthorized",
+                "status": "Unauthorized",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\",\n  \"password\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Login",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/login",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5511vgegy1me98ji3dd"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "authType": "none",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"refreshToken\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Refresh access token",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/refresh",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"accessToken\": \"string\",\n  \"refreshToken\": \"string\",\n  \"expiresIn\": 0\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"refreshToken\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Refresh access token",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/refresh",
+                  "requestVariables": []
+                }
+              },
+              "Unauthorized": {
+                "body": "",
+                "code": 401,
+                "name": "Unauthorized",
+                "status": "Unauthorized",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"refreshToken\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Refresh access token",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/refresh",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5511vgggy1m1sr9w9o0"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Logout current session",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/logout",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Logout current session",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/logout",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5521vgigy1mq16vf350"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "authType": "none",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"email\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Send password reset email",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/forgot-password",
+            "responses": {
+              "Resource not found": {
+                "body": "",
+                "code": 404,
+                "name": "Resource not found",
+                "status": "Not Found",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Send password reset email",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/forgot-password",
+                  "requestVariables": []
+                }
+              },
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Send password reset email",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/forgot-password",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5521vgkgy1mokn81q5d"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "authType": "none",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"token\": \"string\",\n  \"newPassword\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Reset password with token",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/auth/reset-password",
+            "responses": {
+              "Bad request": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 400,
+                "name": "Bad request",
+                "status": "Bad Request",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"token\": \"string\",\n  \"newPassword\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Reset password with token",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/reset-password",
+                  "requestVariables": []
+                }
+              },
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "authType": "none",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"token\": \"string\",\n  \"newPassword\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Reset password with token",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/auth/reset-password",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5521vgmgy1mqnoqgrtx"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": null
+      },
+      {
+        "v": 11,
+        "id": "cmn7jx55p1vgngy1m3r9fi6h2",
+        "name": "User",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Get current profile",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/users/me",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"email\": \"string\",\n  \"name\": \"string\",\n  \"displayName\": \"string\",\n  \"avatar\": \"string\",\n  \"status\": \"string\",\n  \"bio\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get current profile",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me",
+                  "requestVariables": []
+                }
+              },
+              "Resource not found": {
+                "body": "",
+                "code": 404,
+                "name": "Resource not found",
+                "status": "Not Found",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get current profile",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5631vgpgy1m4wlh6o6k"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"displayName\": \"string\",\n  \"bio\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Update profile",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/users/me",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"email\": \"string\",\n  \"name\": \"string\",\n  \"displayName\": \"string\",\n  \"avatar\": \"string\",\n  \"status\": \"string\",\n  \"bio\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"displayName\": \"string\",\n  \"bio\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Update profile",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5631vgrgy1mb1my5c43"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"currentPassword\": \"string\",\n  \"newPassword\": \"string\",\n  \"confirmPassword\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Change password",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/users/me/change-password",
+            "responses": {
+              "Bad request": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 400,
+                "name": "Bad request",
+                "status": "Bad Request",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"currentPassword\": \"string\",\n  \"newPassword\": \"string\",\n  \"confirmPassword\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Change password",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me/change-password",
+                  "requestVariables": []
+                }
+              },
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"currentPassword\": \"string\",\n  \"newPassword\": \"string\",\n  \"confirmPassword\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Change password",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me/change-password",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5641vgtgy1mhqlana8e"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": [
+                {
+                  "key": "avatar",
+                  "value": "",
+                  "active": true,
+                  "isFile": false
+                }
+              ],
+              "contentType": "multipart/form-data"
+            },
+            "name": "Upload avatar",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/users/me/avatar",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"id\": \"string\",\n  \"email\": \"string\",\n  \"name\": \"string\",\n  \"displayName\": \"string\",\n  \"avatar\": \"string\",\n  \"status\": \"string\",\n  \"bio\": \"string\"\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": [
+                      {
+                        "key": "avatar",
+                        "value": "",
+                        "active": true,
+                        "isFile": false
+                      }
+                    ],
+                    "contentType": "multipart/form-data"
+                  },
+                  "name": "Upload avatar",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/users/me/avatar",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5641vgvgy1mw4r0nz0t"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": null
+      },
+      {
+        "v": 11,
+        "id": "cmn7jx56j1vgwgy1my2gs7fkc",
+        "name": "Workspace",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "List workspaces",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces",
+            "responses": {
+              "OK": {
+                "body": "[\n  {\n    \"id\": \"string\",\n    \"name\": \"string\",\n    \"description\": \"string\",\n    \"role\": \"string\"\n  }\n]",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "List workspaces",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56y1vgygy1mnt8u79v7"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create workspace",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"id\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"role\": \"string\"\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Create workspace",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56y1vh0gy1mof45bfpc"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Get workspace detail",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"role\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get workspace detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+                  "requestVariables": []
+                }
+              },
+              "Resource not found": {
+                "body": "",
+                "code": 404,
+                "name": "Resource not found",
+                "status": "Not Found",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get workspace detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56y1vh2gy1m74patygy"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Delete workspace",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Delete workspace",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56y1vh4gy1myln8wlys"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Update workspace",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"role\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Update workspace",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56z1vh6gy1mh8s387dv"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"email\": \"string\",\n  \"role\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Invite member",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/invite",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"email\": \"string\",\n  \"role\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Invite member",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/invite",
+                  "requestVariables": [
+                    {
+                      "key": "workspaceId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "workspaceId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx56z1vh8gy1md56t3rqr"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Accept invite token",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/accept-invite/<<token>>",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Accept invite token",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/accept-invite/<<token>>",
+                  "requestVariables": [
+                    {
+                      "key": "token",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "token",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx56z1vhagy1msqvkiq8h"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "List members",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members",
+            "responses": {
+              "OK": {
+                "body": "[\n  {\n    \"userId\": \"string\",\n    \"displayName\": \"string\",\n    \"role\": \"string\"\n  }\n]",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "List members",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members",
+                  "requestVariables": [
+                    {
+                      "key": "workspaceId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "workspaceId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx56z1vhcgy1mnn1buc8t"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Remove member",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members/<<userId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Remove member",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members/<<userId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx56z1vhegy1mc5hwnr0o"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"role\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Change member role",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members/<<userId>>",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"role\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Change member role",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/members/<<userId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5701vhggy1mjm4i0ygk"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Leave workspace",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/leave",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Leave workspace",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/leave",
+                  "requestVariables": [
+                    {
+                      "key": "workspaceId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "workspaceId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5701vhigy1mm66sq7ee"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": null
+      },
+      {
+        "v": 11,
+        "id": "cmn7jx5831vhjgy1mie3cdn26",
+        "name": "Project",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "List projects in workspace",
+            "method": "GET",
+            "params": [
+              {
+                "key": "status",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/projects",
+            "responses": {
+              "OK": {
+                "body": "[\n  {\n    \"id\": \"string\",\n    \"workspaceId\": \"string\",\n    \"name\": \"string\",\n    \"description\": \"string\",\n    \"color\": \"string\",\n    \"status\": \"string\"\n  }\n]",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "List projects in workspace",
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "status",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    }
+                  ],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/projects",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx58i1vhlgy1mjz8uxr1u"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create project in workspace",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/projects",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"id\": \"string\",\n  \"workspaceId\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\",\n  \"status\": \"string\"\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Create project in workspace",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/workspaces/<<workspaceId>>/projects",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx58i1vhngy1mtinnxruv"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Get project detail",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"workspaceId\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\",\n  \"status\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get project detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+                  "requestVariables": []
+                }
+              },
+              "Resource not found": {
+                "body": "",
+                "code": 404,
+                "name": "Resource not found",
+                "status": "Not Found",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get project detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx58i1vhpgy1m76bu7iu9"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Delete project",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Delete project",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx58j1vhrgy1m3efaekf6"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Update project",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"workspaceId\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\",\n  \"status\": \"string\"\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"color\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Update project",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx58j1vhtgy1mfmafnzbl"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Archive project",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/archive",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Archive project",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/archive",
+                  "requestVariables": [
+                    {
+                      "key": "projectId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "projectId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx58j1vhvgy1mryswmdwg"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Unarchive project",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/unarchive",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Unarchive project",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/unarchive",
+                  "requestVariables": [
+                    {
+                      "key": "projectId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "projectId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx58j1vhxgy1mdkhthw5t"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Pin project for current user",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/pin",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Pin project for current user",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/pin",
+                  "requestVariables": [
+                    {
+                      "key": "projectId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "projectId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx58j1vhzgy1m95jspghd"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Unpin project for current user",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/unpin",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Unpin project for current user",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/unpin",
+                  "requestVariables": [
+                    {
+                      "key": "projectId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "projectId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx58j1vi1gy1mdlh8yghl"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": null
+      },
+      {
+        "v": 11,
+        "id": "cmn7jx59i1vi2gy1mulvso7lm",
+        "name": "Task",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "List tasks with filters",
+            "method": "GET",
+            "params": [
+              {
+                "key": "status",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "priority",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "assigneeId",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "labelIds",
+                "value": "",
+                "active": true,
+                "description": "Comma separated label IDs"
+              },
+              {
+                "key": "dueDate",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "search",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "sortBy",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "sortOrder",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "page",
+                "value": "",
+                "active": true,
+                "description": ""
+              },
+              {
+                "key": "limit",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/tasks",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"items\": [\n    {\n      \"id\": \"string\",\n      \"projectId\": \"string\",\n      \"title\": \"string\",\n      \"description\": \"string\",\n      \"status\": \"string\",\n      \"priority\": \"string\",\n      \"estimatedHours\": 0,\n      \"actualHours\": 0,\n      \"assignees\": [\n        \"string\"\n      ]\n    }\n  ],\n  \"meta\": {\n    \"page\": 0,\n    \"limit\": 0,\n    \"total\": 0\n  }\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "List tasks with filters",
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "status",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "priority",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "assigneeId",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "labelIds",
+                      "value": "",
+                      "active": true,
+                      "description": "Comma separated label IDs"
+                    },
+                    {
+                      "key": "dueDate",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "sortOrder",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "page",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "active": true,
+                      "description": ""
+                    }
+                  ],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/tasks",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx59y1vi4gy1m9i0xwctg"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"priority\": \"string\",\n  \"startDate\": \"string\",\n  \"dueDate\": \"string\",\n  \"estimatedHours\": 0\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create task",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/tasks",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"id\": \"string\",\n  \"projectId\": \"string\",\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"status\": \"string\",\n  \"priority\": \"string\",\n  \"estimatedHours\": 0,\n  \"actualHours\": 0,\n  \"assignees\": [\n    \"string\"\n  ]\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"priority\": \"string\",\n  \"startDate\": \"string\",\n  \"dueDate\": \"string\",\n  \"estimatedHours\": 0\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Create task",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/projects/<<projectId>>/tasks",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx59z1vi6gy1m0y9k7onx"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Get task detail",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"projectId\": \"string\",\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"status\": \"string\",\n  \"priority\": \"string\",\n  \"estimatedHours\": 0,\n  \"actualHours\": 0,\n  \"assignees\": [\n    \"string\"\n  ]\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get task detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+                  "requestVariables": []
+                }
+              },
+              "Resource not found": {
+                "body": "",
+                "code": 404,
+                "name": "Resource not found",
+                "status": "Not Found",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Get task detail",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx59z1vi8gy1mc3ffdddm"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Delete task",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Delete task",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx59z1viagy1mnym7b5zo"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "",
+              "contentType": "application/json"
+            },
+            "name": "Update task",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+            "responses": {
+              "OK": {
+                "body": "{\n  \"id\": \"string\",\n  \"projectId\": \"string\",\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"status\": \"string\",\n  \"priority\": \"string\",\n  \"estimatedHours\": 0,\n  \"actualHours\": 0,\n  \"assignees\": [\n    \"string\"\n  ]\n}",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "",
+                    "contentType": "application/json"
+                  },
+                  "name": "Update task",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx59z1vicgy1mwwuqewj8"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"status\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Update task status",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/status",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"status\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Update task status",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/status",
+                  "requestVariables": [
+                    {
+                      "key": "taskId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx59z1viegy1mdoou7tst"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"userId\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Assign member to task",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/assign",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"userId\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Assign member to task",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/assign",
+                  "requestVariables": [
+                    {
+                      "key": "taskId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a01viggy1m5ubwituy"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Remove member from task",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/assign/<<userId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Remove member from task",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/assign/<<userId>>",
+                  "requestVariables": [
+                    {
+                      "key": "taskId",
+                      "value": "",
+                      "active": true
+                    },
+                    {
+                      "key": "userId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              },
+              {
+                "key": "userId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a01viigy1m1lg6ef54"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"labelId\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Add label to task",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/labels",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"labelId\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Add label to task",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/labels",
+                  "requestVariables": [
+                    {
+                      "key": "taskId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a01vikgy1m6wgitr08"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Remove label from task",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/labels/<<labelId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Remove label from task",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/labels/<<labelId>>",
+                  "requestVariables": [
+                    {
+                      "key": "taskId",
+                      "value": "",
+                      "active": true
+                    },
+                    {
+                      "key": "labelId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              },
+              {
+                "key": "labelId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a01vimgy1mbkb0g734"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "List subtasks",
+            "method": "GET",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/subtasks",
+            "responses": {
+              "OK": {
+                "body": "[\n  {\n    \"id\": \"string\",\n    \"title\": \"string\",\n    \"completed\": true\n  }\n]",
+                "code": 200,
+                "name": "OK",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "List subtasks",
+                  "method": "GET",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/subtasks",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5a01viogy1m1b53ikq0"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"title\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create subtask",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/subtasks",
+            "responses": {
+              "Created": {
+                "body": "{\n  \"id\": \"string\",\n  \"title\": \"string\",\n  \"completed\": true\n}",
+                "code": 201,
+                "name": "Created",
+                "status": "Created",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": "{\n  \"title\": \"string\"\n}",
+                    "contentType": "application/json"
+                  },
+                  "name": "Create subtask",
+                  "method": "POST",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/subtasks",
+                  "requestVariables": []
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn7jx5a11viqgy1md8v9tzjp"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Toggle subtask completion",
+            "method": "PATCH",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/subtasks/<<subtaskId>>/complete",
+            "responses": {
+              "Successful operation": {
+                "body": "{\n  \"message\": \"string\"\n}",
+                "code": 200,
+                "name": "Successful operation",
+                "status": "OK",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Toggle subtask completion",
+                  "method": "PATCH",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/subtasks/<<subtaskId>>/complete",
+                  "requestVariables": [
+                    {
+                      "key": "subtaskId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "subtaskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a11visgy1mkvakhmhz"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": null,
+              "contentType": null
+            },
+            "name": "Delete subtask",
+            "method": "DELETE",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/subtasks/<<subtaskId>>",
+            "responses": {
+              "No Content": {
+                "body": "",
+                "code": 204,
+                "name": "No Content",
+                "status": "No Content",
+                "headers": [
+                  {
+                    "key": "content-type",
+                    "value": "application/json",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "originalRequest": {
+                  "v": "6",
+                  "auth": {
+                    "token": "",
+                    "authType": "bearer",
+                    "authActive": true
+                  },
+                  "body": {
+                    "body": null,
+                    "contentType": null
+                  },
+                  "name": "Delete subtask",
+                  "method": "DELETE",
+                  "params": [],
+                  "headers": [],
+                  "endpoint": "http://localhost:3333/api/v1/subtasks/<<subtaskId>>",
+                  "requestVariables": [
+                    {
+                      "key": "subtaskId",
+                      "value": "",
+                      "active": true
+                    }
+                  ]
+                }
+              }
+            },
+            "testScript": "",
+            "description": null,
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "subtaskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn7jx5a11viugy1m9tlnpoxj"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": null
+      },
+      {
+        "v": 11,
+        "id": "cmn8z0b7v2i34f21m80b5gv7g",
+        "name": "Comment",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"content\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create Comment",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/comments",
+            "responses": {},
+            "testScript": "",
+            "description": "Tạo comment cho task (dựa trên OpenAPI)",
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn8createcomment0001"
+          },
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"content\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Reply Comment",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/comments/<<parentId>>/reply",
+            "responses": {},
+            "testScript": "",
+            "description": "Reply vào comment (dựa trên OpenAPI)",
+            "preRequestScript": "",
+            "requestVariables": [
+              {
+                "key": "taskId",
+                "value": "",
+                "active": true
+              },
+              {
+                "key": "parentId",
+                "value": "",
+                "active": true
+              }
+            ],
+            "id": "cmn8replycomment0002"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": "Comment endpoints: create + reply"
+      },
+      {
+        "v": 11,
+        "id": "cmn8z11fl29nsgy1mlhpwoohx",
+        "name": "Notification",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "auth": {
+              "token": "",
+              "authType": "bearer",
+              "authActive": true
+            },
+            "body": {
+              "body": "{\n  \"type\": \"string\",\n  \"title\": \"string\",\n  \"message\": \"string\",\n  \"userId\": \"string\"\n}",
+              "contentType": "application/json"
+            },
+            "name": "Create Notification",
+            "method": "POST",
+            "params": [],
+            "headers": [],
+            "endpoint": "http://localhost:3333/api/v1/notifications",
+            "responses": {},
+            "testScript": "",
+            "description": "Tạo notification để test (dựa trên OpenAPI)",
+            "preRequestScript": "",
+            "requestVariables": [],
+            "id": "cmn8createnoti0003"
+          }
+        ],
+        "auth": {
+          "authType": "inherit",
+          "authActive": true
+        },
+        "headers": [],
+        "variables": [],
+        "description": "Notification endpoints: create"
+      },
+      {
+        "v": 11,
+        "id": "cmn8z0b7v2i34f21m80b5gv7g",
+        "name": "Comment",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "id": "cmn8createcomment0001",
+            "name": "List comments for task",
+            "method": "GET",
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/comments",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": null, "body": null },
+            "requestVariables": [],
+            "responses": {}
+          },
+          {
+            "v": "17",
+            "id": "cmn8createcomment0002",
+            "name": "Create comment",
+            "method": "POST",
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/comments",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": "application/json", "body": "{\n  \"content\": \"string\"\n}" },
+            "requestVariables": [],
+            "responses": {}
+          },
+          {
+            "v": "17",
+            "id": "cmn8createcomment0003",
+            "name": "Reply to comment",
+            "method": "POST",
+            "endpoint": "http://localhost:3333/api/v1/tasks/<<taskId>>/comments/<<parentId>>/reply",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": "application/json", "body": "{\n  \"content\": \"string\"\n}" },
+            "requestVariables": [],
+            "responses": {}
+          }
+        ],
+        "auth": { "authType": "inherit", "authActive": true },
+        "headers": [],
+        "variables": [],
+        "description": "Comment endpoints: list, create, reply"
+      },
+      {
+        "v": 11,
+        "id": "cmn8z11fl29nsgy1mlhpwoohx",
+        "name": "Notification",
+        "folders": [],
+        "requests": [
+          {
+            "v": "17",
+            "id": "cmn8notif0001",
+            "name": "List notifications",
+            "method": "GET",
+            "endpoint": "http://localhost:3333/api/v1/notifications",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": null, "body": null },
+            "requestVariables": [],
+            "responses": {}
+          },
+          {
+            "v": "17",
+            "id": "cmn8notif0002",
+            "name": "Create notification (test)",
+            "method": "POST",
+            "endpoint": "http://localhost:3333/api/v1/notifications",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": "application/json", "body": "{\n  \"type\": \"COMMENT_ADDED\",\n  \"title\": \"string\",\n  \"message\": \"string\",\n  \"userId\": \"string\"\n}" },
+            "requestVariables": [],
+            "responses": {}
+          },
+          {
+            "v": "17",
+            "id": "cmn8notif0003",
+            "name": "Mark notification as read",
+            "method": "PATCH",
+            "endpoint": "http://localhost:3333/api/v1/notifications/<<notificationId>>/read",
+            "params": [],
+            "headers": [],
+            "preRequestScript": "",
+            "testScript": "",
+            "auth": { "authType": "bearer", "token": "", "authActive": true },
+            "body": { "contentType": null, "body": null },
+            "requestVariables": [],
+            "responses": {}
+          }
+        ],
+        "auth": { "authType": "inherit", "authActive": true },
+        "headers": [],
+        "variables": [],
+        "description": "Notification endpoints: list, create, mark-read"
+      }
     ],
-    "tags": [
-        {
-            "name": "Auth",
-            "description": "Authentication — Đăng ký, đăng nhập, đăng xuất, quản lý token"
-        },
-        {
-            "name": "User",
-            "description": "User Profile — Xem/sửa thông tin cá nhân, đổi mật khẩu, upload avatar"
-        },
-        {
-            "name": "Workspace",
-            "description": "Workspace Management — Quản lý không gian làm việc (Phase 3 — chưa implement)"
-        },
-        {
-            "name": "Task",
-            "description": "Task Management — Quản lý công việc (Phase 4 — chưa implement)"
-        }
-    ],
-    "paths": {
-        "/auth/register": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Đăng ký tài khoản mới",
-                "description": "Tạo tài khoản mới với email, password, fullname. Trả về access token + refresh token + thông tin user.",
-                "operationId": "register",
-                "security": [],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegisterDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Đăng ký hợp lệ",
-                                    "value": {
-                                        "email": "test@example.com",
-                                        "password": "Password@123",
-                                        "fullname": "Test User"
-                                    }
-                                },
-                                "invalid": {
-                                    "summary": "Đăng ký lỗi validation",
-                                    "value": {
-                                        "email": "invalid",
-                                        "password": "123",
-                                        "fullname": ""
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Đăng ký thành công",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error — email/password/fullname không hợp lệ",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Email đã tồn tại",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/login": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Đăng nhập",
-                "description": "Đăng nhập bằng email + password. Trả về access token + refresh token.",
-                "operationId": "login",
-                "security": [],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Login hợp lệ",
-                                    "value": {
-                                        "email": "test@example.com",
-                                        "password": "Password@123"
-                                    }
-                                },
-                                "wrong_password": {
-                                    "summary": "Sai mật khẩu",
-                                    "value": {
-                                        "email": "test@example.com",
-                                        "password": "WrongPassword@1"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Đăng nhập thành công",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Email hoặc mật khẩu không chính xác"
-                    }
-                }
-            }
-        },
-        "/auth/refresh": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Làm mới access token",
-                "description": "Dùng refresh token để lấy cặp token mới. Không cần access token (vì access token đã hết hạn).",
-                "operationId": "refreshToken",
-                "security": [],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RefreshTokenDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Refresh token hợp lệ",
-                                    "value": {
-                                        "refreshToken": "<paste_refresh_token_here>"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Token mới được tạo",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TokensResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Refresh token không hợp lệ hoặc đã hết hạn"
-                    }
-                }
-            }
-        },
-        "/auth/logout": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Đăng xuất",
-                "description": "Revoke tất cả refresh tokens + blacklist access token hiện tại. Cần JWT token trong header.",
-                "operationId": "logout",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Đăng xuất thành công",
-                        "content": {
-                            "application/json": {
-                                "example": {
-                                    "success": true,
-                                    "data": {
-                                        "message": "Logout successfully"
-                                    },
-                                    "timestamp": "2026-03-05T15:00:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token không hợp lệ hoặc đã bị thu hồi"
-                    }
-                }
-            }
-        },
-        "/auth/forgot-password": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Yêu cầu reset mật khẩu",
-                "description": "Gửi email chứa reset token. Token có hiệu lực 15 phút.",
-                "operationId": "forgotPassword",
-                "security": [],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ForgotPasswordDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Email tồn tại",
-                                    "value": {
-                                        "email": "test@example.com"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Email reset đã được gửi (check terminal log cho dev token)",
-                        "content": {
-                            "application/json": {
-                                "example": {
-                                    "success": true,
-                                    "data": {
-                                        "message": "Reset password email sent"
-                                    },
-                                    "timestamp": "2026-03-05T15:00:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "User not found"
-                    }
-                }
-            }
-        },
-        "/auth/reset-password": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Đặt lại mật khẩu",
-                "description": "Đặt mật khẩu mới bằng reset token (lấy từ forgot-password).",
-                "operationId": "resetPassword",
-                "security": [],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ResetPasswordDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Reset mật khẩu",
-                                    "value": {
-                                        "token": "<paste_reset_token_from_terminal>",
-                                        "newPassword": "NewPassword@456"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Mật khẩu đã được đặt lại",
-                        "content": {
-                            "application/json": {
-                                "example": {
-                                    "success": true,
-                                    "data": {
-                                        "message": "Password reset successfully"
-                                    },
-                                    "timestamp": "2026-03-05T15:00:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Token không hợp lệ hoặc đã hết hạn"
-                    }
-                }
-            }
-        },
-        "/users/me": {
-            "get": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "Lấy thông tin hồ sơ cá nhân",
-                "description": "Trả về thông tin profile của user đang đăng nhập. Cần JWT token.",
-                "operationId": "getProfile",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Lấy profile thành công",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UserProfileResponse"
-                                },
-                                "example": {
-                                    "id": "uuid-string",
-                                    "email": "test@example.com",
-                                    "name": "Test User",
-                                    "displayName": null,
-                                    "avatar": null,
-                                    "status": "ACTIVE",
-                                    "bio": null,
-                                    "emailVerified": false,
-                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
-                                    "createdAt": "2026-03-15T08:00:00.000Z",
-                                    "updatedAt": "2026-03-17T10:00:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token không hợp lệ hoặc đã hết hạn"
-                    },
-                    "404": {
-                        "description": "User not found"
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "Cập nhật thông tin hồ sơ",
-                "description": "Cập nhật displayName và/hoặc bio. Ít nhất 1 trường phải được cung cấp. Cần JWT token.",
-                "operationId": "updateProfile",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateProfileDto"
-                            },
-                            "examples": {
-                                "both_fields": {
-                                    "summary": "Cập nhật cả displayName và bio",
-                                    "value": {
-                                        "displayName": "Dat Nguyen",
-                                        "bio": "Backend developer at CCNLTHD"
-                                    }
-                                },
-                                "display_name_only": {
-                                    "summary": "Chỉ cập nhật displayName",
-                                    "value": {
-                                        "displayName": "Dat Nguyen"
-                                    }
-                                },
-                                "bio_only": {
-                                    "summary": "Chỉ cập nhật bio",
-                                    "value": {
-                                        "bio": "Backend developer at CCNLTHD"
-                                    }
-                                },
-                                "empty_body": {
-                                    "summary": "Không gửi trường nào → lỗi 400",
-                                    "value": {}
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Cập nhật profile thành công",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UserProfileResponse"
-                                },
-                                "example": {
-                                    "id": "uuid-string",
-                                    "email": "test@example.com",
-                                    "name": "Test User",
-                                    "displayName": "Dat Nguyen",
-                                    "avatar": null,
-                                    "status": "ACTIVE",
-                                    "bio": "Backend developer at CCNLTHD",
-                                    "emailVerified": false,
-                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
-                                    "createdAt": "2026-03-15T08:00:00.000Z",
-                                    "updatedAt": "2026-03-17T10:30:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Không có trường nào được cung cấp để cập nhật",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token không hợp lệ hoặc đã hết hạn"
-                    }
-                }
-            }
-        },
-        "/users/me/change-password": {
-            "patch": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "Đổi mật khẩu",
-                "description": "Đổi mật khẩu khi đã đăng nhập. Cần nhập mật khẩu hiện tại + mật khẩu mới + xác nhận. Sau khi đổi, tất cả refresh token bị thu hồi (buộc đăng nhập lại).",
-                "operationId": "changePassword",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChangePasswordDto"
-                            },
-                            "examples": {
-                                "valid": {
-                                    "summary": "Đổi mật khẩu hợp lệ",
-                                    "value": {
-                                        "currentPassword": "Password@123",
-                                        "newPassword": "NewPassword@456",
-                                        "confirmPassword": "NewPassword@456"
-                                    }
-                                },
-                                "mismatch": {
-                                    "summary": "Mật khẩu xác nhận không khớp",
-                                    "value": {
-                                        "currentPassword": "Password@123",
-                                        "newPassword": "NewPassword@456",
-                                        "confirmPassword": "Different@789"
-                                    }
-                                },
-                                "same_password": {
-                                    "summary": "Mật khẩu mới trùng mật khẩu cũ",
-                                    "value": {
-                                        "currentPassword": "Password@123",
-                                        "newPassword": "Password@123",
-                                        "confirmPassword": "Password@123"
-                                    }
-                                },
-                                "wrong_current": {
-                                    "summary": "Sai mật khẩu hiện tại",
-                                    "value": {
-                                        "currentPassword": "WrongPassword@1",
-                                        "newPassword": "NewPassword@456",
-                                        "confirmPassword": "NewPassword@456"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Đổi mật khẩu thành công",
-                        "content": {
-                            "application/json": {
-                                "example": {
-                                    "message": "Password changed successfully"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error — mật khẩu không khớp, trùng mật khẩu cũ, hoặc sai mật khẩu hiện tại",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token không hợp lệ hoặc đã hết hạn"
-                    },
-                    "404": {
-                        "description": "User not found"
-                    }
-                }
-            }
-        },
-        "/users/me/avatar": {
-            "post": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "Upload ảnh đại diện",
-                "description": "Upload avatar cho user. Chấp nhận file image/jpeg, image/png, image/gif. Tối đa 5MB. Avatar cũ sẽ bị xóa. Cần JWT token.",
-                "operationId": "uploadAvatar",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "avatar"
-                                ],
-                                "properties": {
-                                    "avatar": {
-                                        "type": "string",
-                                        "format": "binary",
-                                        "description": "File ảnh (JPEG, PNG, GIF). Tối đa 5MB."
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Upload avatar thành công",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UserProfileResponse"
-                                },
-                                "example": {
-                                    "id": "uuid-string",
-                                    "email": "test@example.com",
-                                    "name": "Test User",
-                                    "displayName": "Dat Nguyen",
-                                    "avatar": "avatar-1710654321000-123456789.jpg",
-                                    "status": "ACTIVE",
-                                    "bio": "Backend developer at CCNLTHD",
-                                    "emailVerified": false,
-                                    "lastLoginAt": "2026-03-17T10:00:00.000Z",
-                                    "createdAt": "2026-03-15T08:00:00.000Z",
-                                    "updatedAt": "2026-03-17T11:00:00.000Z"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "File không hợp lệ — sai định dạng hoặc vượt quá 5MB",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Token không hợp lệ hoặc đã hết hạn"
-                    },
-                    "404": {
-                        "description": "User not found"
-                    }
-                }
-            }
-        },
-        "/workspaces": {
-            "get": {
-                "tags": ["Workspace"],
-                "summary": "Lấy danh sách workspace mà User tham gia",
-                "security": [{"BearerAuth": []}],
-                "responses": {
-                    "200": { "description": "Thành công" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" }
-                }
-            },
-            "post": {
-                "tags": ["Workspace"],
-                "summary": "Tạo workspace mới",
-                "security": [{"BearerAuth": []}],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "name": { "type": "string" },
-                                    "description": { "type": "string" }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": { "description": "Tạo workspace thành công" },
-                    "400": { "description": "Lỗi validation" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" }
-                }
-            }
-        },
-        "/workspaces/{id}": {
-            "get": {
-                "tags": ["Workspace"],
-                "summary": "Lấy chi tiết 1 Workspace",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "responses": {
-                    "200": { "description": "Thành công" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Bạn không có quyền truy cập workspace này" },
-                    "404": { "description": "Workspace không tồn tại" }
-                }
-            },
-            "patch": {
-                "tags": ["Workspace"],
-                "summary": "Sửa tên hoặc mô tả Workspace",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "name": { "type": "string" },
-                                    "description": { "type": "string" }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Cập nhật thành công" },
-                    "400": { "description": "Lỗi validation" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Chỉ Owner hoặc Admin mới được sửa workspace" },
-                    "404": { "description": "Workspace không tồn tại" }
-                }
-            },
-            "delete": {
-                "tags": ["Workspace"],
-                "summary": "Xóa Workspace (chỉ Owner)",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "responses": {
-                    "200": { "description": "Xóa thành công" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Chỉ Owner mới có quyền xóa workspace này" },
-                    "404": { "description": "Workspace không tồn tại" }
-                }
-            }
-        },
-        "/workspaces/{id}/invite": {
-            "post": {
-                "tags": ["Workspace"],
-                "summary": "Tạo Token lời mời thành viên",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "email": { "type": "string" },
-                                    "role": { "type": "string", "enum": ["ADMIN", "MEMBER"] }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": { "description": "Tạo token mời thành công" },
-                    "400": { "description": "Lỗi validation" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Chỉ Owner/Admin mới được mời thành viên | Người dùng đã là thành viên" },
-                    "404": { "description": "Workspace hoặc email người dùng không tồn tại" }
-                }
-            }
-        },
-        "/workspaces/accept-invite/{token}": {
-            "post": {
-                "tags": ["Workspace"],
-                "summary": "Chấp nhận lời mời tham gia bằng Token",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "responses": {
-                    "201": { "description": "Tham gia thành công" },
-                    "401": { "description": "Token đăng nhập không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Token mời đã sử dụng/hết hạn | Email không khớp với lời mời" },
-                    "404": { "description": "Token mời không tồn tại hoặc không hợp lệ" }
-                }
-            }
-        },
-        "/workspaces/{id}/members": {
-            "get": {
-                "tags": ["Workspace"],
-                "summary": "Lấy danh sách thành viên trong Workspace",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "responses": {
-                    "200": { "description": "Thành công" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Bạn không phải thành viên workspace này" },
-                    "404": { "description": "Workspace không tồn tại" }
-                }
-            }
-        },
-        "/workspaces/{id}/members/{userId}": {
-            "patch": {
-                "tags": ["Workspace"],
-                "summary": "Đổi quyền thành viên (MEMBER lên ADMIN)",
-                "security": [{"BearerAuth": []}],
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-                    { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": { "role": { "type": "string", "enum": ["ADMIN", "MEMBER"] } }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Đổi quyền thành công" },
-                    "400": { "description": "Lỗi validation" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Chỉ Owner mới có quyền đổi Role | Không tự đổi quyền chính mình" },
-                    "404": { "description": "Thành viên không tồn tại trong workspace" }
-                }
-            },
-            "delete": {
-                "tags": ["Workspace"],
-                "summary": "Đuổi thành viên ra khỏi nhóm",
-                "security": [{"BearerAuth": []}],
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-                    { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "responses": {
-                    "200": { "description": "Xóa thành viên thành công" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Không có quyền đuổi | Admin không đuổi được Admin | Không đuổi được Owner" },
-                    "404": { "description": "Thành viên không tồn tại trong workspace" }
-                }
-            }
-        },
-        "/workspaces/{id}/leave": {
-            "delete": {
-                "tags": ["Workspace"],
-                "summary": "Tự rời khỏi Workspace",
-                "security": [{"BearerAuth": []}],
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-                "responses": {
-                    "200": { "description": "Đã rời khỏi workspace" },
-                    "401": { "description": "Token không hợp lệ hoặc đã hết hạn" },
-                    "403": { "description": "Owner không thể tự rời nhóm, hãy xóa nhóm hoặc nhường quyền" },
-                    "404": { "description": "Bạn không nằm trong workspace này" }
-                }
-            }
-        }
+    "requests": [],
+    "auth": {
+      "authType": "inherit",
+      "authActive": true
     },
-    "components": {
-        "securitySchemes": {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-                "description": "Paste access token vào đây (không cần prefix 'Bearer ')"
-            }
-        },
-        "schemas": {
-            "RegisterDto": {
-                "type": "object",
-                "required": [
-                    "email",
-                    "password",
-                    "fullname"
-                ],
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "example": "test@example.com"
-                    },
-                    "password": {
-                        "type": "string",
-                        "minLength": 8,
-                        "example": "Password@123",
-                        "description": "Phải chứa: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt (@$!%*?&)"
-                    },
-                    "fullname": {
-                        "type": "string",
-                        "example": "Test User"
-                    }
-                }
-            },
-            "LoginDto": {
-                "type": "object",
-                "required": [
-                    "email",
-                    "password"
-                ],
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "example": "test@example.com"
-                    },
-                    "password": {
-                        "type": "string",
-                        "example": "Password@123"
-                    }
-                }
-            },
-            "RefreshTokenDto": {
-                "type": "object",
-                "required": [
-                    "refreshToken"
-                ],
-                "properties": {
-                    "refreshToken": {
-                        "type": "string",
-                        "example": "<paste_refresh_token_here>"
-                    }
-                }
-            },
-            "ForgotPasswordDto": {
-                "type": "object",
-                "required": [
-                    "email"
-                ],
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "example": "test@example.com"
-                    }
-                }
-            },
-            "ResetPasswordDto": {
-                "type": "object",
-                "required": [
-                    "token",
-                    "newPassword"
-                ],
-                "properties": {
-                    "token": {
-                        "type": "string",
-                        "example": "<paste_reset_token_from_terminal>"
-                    },
-                    "newPassword": {
-                        "type": "string",
-                        "minLength": 8,
-                        "example": "NewPassword@456",
-                        "description": "Phải chứa: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt"
-                    }
-                }
-            },
-            "UpdateProfileDto": {
-                "type": "object",
-                "properties": {
-                    "displayName": {
-                        "type": "string",
-                        "maxLength": 50,
-                        "example": "Dat Nguyen",
-                        "description": "Tên hiển thị (tối đa 50 ký tự)"
-                    },
-                    "bio": {
-                        "type": "string",
-                        "maxLength": 160,
-                        "example": "Backend developer at CCNLTHD",
-                        "description": "Mô tả bản thân (tối đa 160 ký tự)"
-                    }
-                }
-            },
-            "ChangePasswordDto": {
-                "type": "object",
-                "required": [
-                    "currentPassword",
-                    "newPassword",
-                    "confirmPassword"
-                ],
-                "properties": {
-                    "currentPassword": {
-                        "type": "string",
-                        "example": "Password@123",
-                        "description": "Mật khẩu hiện tại"
-                    },
-                    "newPassword": {
-                        "type": "string",
-                        "minLength": 8,
-                        "example": "NewPassword@456",
-                        "description": "Mật khẩu mới — phải chứa: 1 chữ hoa, 1 số, 1 ký tự đặc biệt (@$!%*?&)"
-                    },
-                    "confirmPassword": {
-                        "type": "string",
-                        "example": "NewPassword@456",
-                        "description": "Xác nhận mật khẩu mới (phải khớp với newPassword)"
-                    }
-                }
-            },
-            "UserProfileResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "example": "uuid-string"
-                    },
-                    "email": {
-                        "type": "string",
-                        "example": "test@example.com"
-                    },
-                    "name": {
-                        "type": "string",
-                        "example": "Test User"
-                    },
-                    "displayName": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "Dat Nguyen"
-                    },
-                    "avatar": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "ACTIVE",
-                            "INACTIVE",
-                            "BANNED"
-                        ],
-                        "example": "ACTIVE"
-                    },
-                    "bio": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
-                    },
-                    "emailVerified": {
-                        "type": "boolean",
-                        "example": false
-                    },
-                    "lastLoginAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true,
-                        "example": "2026-03-17T10:00:00.000Z"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2026-03-15T08:00:00.000Z"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2026-03-17T10:00:00.000Z"
-                    }
-                }
-            },
-            "AuthResponse": {
-                "type": "object",
-                "properties": {
-                    "success": {
-                        "type": "boolean",
-                        "example": true
-                    },
-                    "data": {
-                        "type": "object",
-                        "properties": {
-                            "user": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string",
-                                        "example": "uuid-string"
-                                    },
-                                    "email": {
-                                        "type": "string",
-                                        "example": "test@example.com"
-                                    },
-                                    "name": {
-                                        "type": "string",
-                                        "example": "Test User"
-                                    },
-                                    "avatar": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "example": null
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "example": "ACTIVE"
-                                    }
-                                }
-                            },
-                            "tokens": {
-                                "$ref": "#/components/schemas/TokensResponse"
-                            }
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "example": "2026-03-05T15:00:00.000Z"
-                    }
-                }
-            },
-            "TokensResponse": {
-                "type": "object",
-                "properties": {
-                    "accessToken": {
-                        "type": "string",
-                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "refreshToken": {
-                        "type": "string",
-                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "expiresIn": {
-                        "type": "integer",
-                        "example": 900,
-                        "description": "Thời gian sống của access token (giây). 900 = 15 phút"
-                    }
-                }
-            },
-            "ErrorResponse": {
-                "type": "object",
-                "properties": {
-                    "success": {
-                        "type": "boolean",
-                        "example": false
-                    },
-                    "statusCode": {
-                        "type": "integer",
-                        "example": 400
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Validation failed"
-                    },
-                    "path": {
-                        "type": "string",
-                        "example": "/api/v1/auth/register"
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "example": "2026-03-05T15:00:00.000Z"
-                    }
-                }
-            }
-        }
-    }
-}
+    "headers": [],
+    "variables": [],
+    "description": "OpenAPI specification for the TodoList Collaboration backend covering Auth, User, Workspace, Project, and Task modules."
+  }
+]

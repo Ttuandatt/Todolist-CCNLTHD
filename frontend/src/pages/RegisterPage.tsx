@@ -20,7 +20,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterForm) => {
     try {
-      await registerUser(data.email, data.password, data.fullname)
+      await registerUser(data.email, data.password, data.displayName)
       toast.success('Account created! Welcome!')
       navigate('/dashboard')
     } catch (err) {
@@ -43,12 +43,12 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
           <input
             type="text"
-            {...register('fullname')}
+            {...register('displayName')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             placeholder="John Doe"
           />
-          {errors.fullname && (
-            <p className="text-sm text-red-600 mt-1">{errors.fullname.message}</p>
+          {errors.displayName && (
+            <p className="text-sm text-red-600 mt-1">{errors.displayName.message}</p>
           )}
         </div>
 
