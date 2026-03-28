@@ -641,7 +641,139 @@ Việc sử dụng Custom Decorator không chỉ rút ngắn số dòng code, m�
 
 ---
 
-## 6.8. Tổng kết
+## 6.8. File Upload với Multer (bổ sung)
+
+Bên cạnh việc validate dữ liệu JSON và transform response, một nhu cầu phổ biến khác trong ứng dụng web là xử lý file upload. HTTP `multipart/form-data` là định dạng gửi file lên server, khác hoàn toàn với JSON thông thường — request body lúc này không phải text mà là binary data xen lẫn metadata. Express.js và NestJS không xử lý được loại request này theo mặc định, do đó cần một middleware chuyên biệt.
+
+### 6.8.1. Multer là gì và tại sao cần Multer?
+
+Multer là middleware Node.js chuyên xử lý `multipart/form-data`. NestJS tích hợp Multer thông qua package `@nestjs/platform-express`, cung cấp `FileInterceptor` và `MulterModule` để làm việc với file upload một cách khai báo (declarative), phù hợp với kiến trúc module của framework.
+
+Quy trình hoạt động của Multer trong NestJS diễn ra như sau: khi client gửi request chứa file, Multer middleware tiếp nhận và parse multipart request, sau đó validate file về loại (MIME type) và kích thước, lưu file vào bộ nhớ hoặc disk, và cuối cùng gắn thông tin file vào `req.file` để Controller có thể truy cập thông qua decorator `@UploadedFile()`.
+
+### 6.8.2. Cấu hình Multer trong dự án
+
+Trong đồ án TodoList Collaboration, Multer được cấu hình tại file `shared/common/config/multer.config.ts` với ba thiết lập chính. Đầu tiên, `memoryStorage()` được chọn làm phương thức lưu trữ, nghĩa là file sẽ được giữ trong RAM dưới dạng buffer thay vì ghi trực tiếp ra disk. Cách tiếp cận này linh hoạt hơn vì cho phép xử lý file (resize, compress) trước khi lưu vĩnh viễn. Thứ hai, giới hạn kích thước file được đặt ở mức 5MB. Cuối cùng, `fileFilter` chỉ cho phép các định dạng ảnh JPEG, PNG và GIF:
+
+```typescript
+import { memoryStorage } from 'multer';
+
+export const avatarMulterConfig = {
+  storage: memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB tối đa
+  },
+  fileFilter: (req, file, callback) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (allowedMimes.includes(file.mimetype)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Only JPEG, PNG, GIF are allowed'), false);
+    }
+  },
+};
+```
+
+Cấu hình này được đăng ký vào `UserModule` thông qua `MulterModule.register(avatarMulterConfig)`, cho phép `FileInterceptor` trong module đó sử dụng các thiết lập đã định nghĩa khi xử lý upload.
+
+### 6.8.3. Controller nhận file upload
+
+Tại tầng Controller, endpoint upload avatar sử dụng `FileInterceptor('avatar')` để lấy file từ field tên "avatar" trong form-data. Decorator `@UploadedFile()` kết hợp với `ParseFilePipe` thực hiện validate lần hai ở tầng controller, tạo lớp bảo vệ kép (defense in depth):
+
+```typescript
+@Post('me/avatar')
+@UseInterceptors(FileInterceptor('avatar'))
+uploadAvatar(
+  @CurrentUser('id') userId: string,
+  @UploadedFile(
+    new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+      ],
+    }),
+  )
+  file: Express.Multer.File,
+) {
+  return this.userService.uploadAvatar(userId, file);
+}
+```
+
+### 6.8.4. Service lưu file và cập nhật database
+
+Tại tầng Service, quá trình lưu file diễn ra qua năm bước tuần tự. Đầu tiên, hệ thống tìm user và lấy thông tin avatar hiện tại. Nếu user đã có avatar cũ, file cũ sẽ được xóa khỏi disk để tránh tốn dung lượng. Tiếp theo, tên file mới được tạo bằng cách kết hợp timestamp với tên gốc để đảm bảo tính duy nhất. File từ buffer được ghi ra disk tại thư mục `uploads/avatars/`, và cuối cùng field `avatar` trong database được cập nhật với tên file mới:
+
+```typescript
+async uploadAvatar(userId: string, file: Express.Multer.File) {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatar: true },
+  });
+
+  if (user.avatar) {
+    const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
+    await fs.unlink(oldPath).catch(() => {});
+  }
+
+  const filename = `${Date.now()}-${file.originalname}`;
+  const filepath = join(process.cwd(), 'uploads', 'avatars', filename);
+  await fs.writeFile(filepath, file.buffer);
+
+  return this.prisma.user.update({
+    where: { id: userId },
+    data: { avatar: filename },
+    select: this.profileSelect,
+  });
+}
+```
+
+### 6.8.5. Phục vụ file tĩnh (Static File Serving)
+
+Để ảnh avatar có thể truy cập qua URL, cần khai báo static file serving trong `main.ts`. Cấu hình `app.useStaticAssets()` cho phép NestJS phục vụ các file trong thư mục `uploads/` với prefix URL tương ứng:
+
+```typescript
+app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  prefix: '/uploads/',
+});
+// URL truy cập: http://localhost:3333/uploads/avatars/1711620000000-avatar.jpg
+```
+
+### 6.8.6. Khi nào dùng và không nên dùng Multer
+
+Multer phù hợp với các ứng dụng cần upload file có kích thước nhỏ đến trung bình (dưới 10MB), lưu trữ local hoặc chuyển tiếp sang dịch vụ lưu trữ đám mây, và đặc biệt phù hợp cho các dự án prototype hoặc quy mô vừa. Tuy nhiên, đối với các ứng dụng cần upload file lớn như video hoặc dataset, nên sử dụng presigned URL với Amazon S3 để client upload trực tiếp mà không tốn bandwidth của server. Tương tự, khi triển khai production ở quy mô lớn, việc kết hợp với CDN sẽ hiệu quả hơn so với phục vụ static file từ server ứng dụng.
+
+---
+
+## 6.9. Lỗi thường gặp và Trade-offs (bổ sung)
+
+Trong quá trình áp dụng các kỹ thuật nâng cao như ValidationPipe, Interceptor và Middleware, nhóm đã rút ra một số bài học quan trọng về giới hạn và cách sử dụng đúng đắn của từng kỹ thuật.
+
+### 6.9.1. Khi nào KHÔNG dùng ValidationPipe global
+
+`ValidationPipe` với tùy chọn `whitelist: true` sẽ tự động loại bỏ mọi field không được khai báo trong DTO. Điều này đảm bảo an toàn cho phần lớn các endpoint, tuy nhiên lại gây vấn đề với một số trường hợp đặc biệt. Đối với endpoint xử lý file upload sử dụng `multipart/form-data`, dữ liệu gửi lên không phải JSON nên không cần ValidationPipe. Tương tự, các webhook endpoint nhận payload từ bên ngoài có thể chứa nhiều field động không thể định nghĩa trước trong DTO.
+
+Giải pháp cho các trường hợp này là override ValidationPipe ở cấp endpoint cụ thể:
+
+```typescript
+@Post('webhook')
+@UsePipes(new ValidationPipe({ whitelist: false }))
+handleWebhook(@Body() payload: any) { ... }
+```
+
+### 6.9.2. Trade-off: Interceptor vs Middleware
+
+Cả Interceptor và Middleware đều có khả năng xử lý request/response, nhưng có sự khác biệt quan trọng. Middleware chạy trước Guards, ở vòng ngoài cùng của pipeline, phù hợp cho các tác vụ như CORS, parsing, và rate limiting. Trong khi đó, Interceptor chạy sau Guards nhưng trước Controller, có thể truy cập Dependency Injection container và xử lý cả response thông qua RxJS pipe, phù hợp cho transform response và logging có context.
+
+Trong đồ án, nhóm lựa chọn sử dụng Interceptor cho `TransformResponseInterceptor` và `LoggingInterceptor` vì cả hai đều cần xử lý dữ liệu response trả về. Trong khi đó, CORS được cấu hình thông qua Express middleware vì cần chạy trước toàn bộ pipeline xử lý.
+
+### 6.9.3. Lỗi Interceptor không xử lý exception đúng cách
+
+Một sai lầm phổ biến khi viết Interceptor là chỉ wrap response thành công mà bỏ qua trường hợp lỗi. Thiết kế đúng đắn là phân tách trách nhiệm rõ ràng: Interceptor chỉ xử lý response thành công bằng cách wrap vào format chuẩn `{success, data, timestamp}`, còn mọi exception đều được xử lý riêng bởi `ExceptionFilter`. Cách tiếp cận này tuân thủ nguyên tắc Single Responsibility, giúp code dễ bảo trì và dễ debug hơn so với việc cố gắng xử lý cả hai trường hợp trong cùng một Interceptor.
+
+Với kiến thức về Pipes, Interceptors, Multer và các trade-offs đã được trình bày, chương tiếp theo sẽ đi vào lĩnh vực bảo mật — xây dựng hệ thống Authentication và Authorization bằng JWT.
+
+---
+
+## 6.10. Tổng kết
 
 Chương này đã dệt nên một bức tranh hoàn chỉnh về cách NestJS kiểm soát và nhào nặn luồng dữ liệu thông qua các kỹ thuật nâng cao. 
 

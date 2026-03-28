@@ -1,57 +1,31 @@
 # BỔ SUNG VÀO CHƯƠNG 6 — KỸ THUẬT FILE UPLOAD VỚI MULTER
 
-> **Hướng dẫn dán vào báo cáo:** Thêm section 6.5 và 6.6 này vào **sau section 6.4** (Bài tập ứng dụng hiện tại), trước phần Tổng kết của Chương 6.
+## 6.8. File Upload với Multer (bổ sung)
 
----
+Bên cạnh việc validate dữ liệu JSON và transform response, một nhu cầu phổ biến khác trong ứng dụng web là xử lý file upload. HTTP `multipart/form-data` là định dạng gửi file lên server, khác hoàn toàn với JSON thông thường — request body lúc này không phải text mà là binary data xen lẫn metadata. Express.js và NestJS không xử lý được loại request này theo mặc định, do đó cần một middleware chuyên biệt.
 
-## 6.5. File Upload với Multer
+### 6.8.1. Multer là gì và tại sao cần Multer?
 
-### 6.5.1. File Upload là gì và tại sao cần Multer?
+Multer là middleware Node.js chuyên xử lý `multipart/form-data`. NestJS tích hợp Multer thông qua package `@nestjs/platform-express`, cung cấp `FileInterceptor` và `MulterModule` để làm việc với file upload một cách khai báo (declarative), phù hợp với kiến trúc module của framework.
 
-HTTP multipart/form-data là định dạng gửi file lên server — khác hoàn toàn với JSON. Request body lúc này không phải text, mà là binary data xen lẫn metadata. Express.js (và NestJS) không xử lý được loại request này theo mặc định.
+Quy trình hoạt động của Multer trong NestJS diễn ra như sau: khi client gửi request chứa file, Multer middleware tiếp nhận và parse multipart request, sau đó validate file về loại (MIME type) và kích thước, lưu file vào bộ nhớ hoặc disk, và cuối cùng gắn thông tin file vào `req.file` để Controller có thể truy cập thông qua decorator `@UploadedFile()`.
 
-**Multer** là middleware Node.js chuyên xử lý `multipart/form-data`. NestJS tích hợp Multer qua `@nestjs/platform-express`, cung cấp `FileInterceptor` và `MulterModule`.
+### 6.8.2. Cấu hình Multer trong dự án
 
-### 6.5.2. Lý thuyết hoạt động
-
-```
-Client                          NestJS
-  |                               |
-  |--- POST /users/me/avatar ----> |
-  |    Content-Type: multipart     |
-  |    [binary file data]          |
-  |                          [Multer Middleware]
-  |                          1. Parse multipart request
-  |                          2. Validate file (type, size)
-  |                          3. Lưu file (memory/disk)
-  |                          4. Gắn vào req.file
-  |                               |
-  |                          [Controller]
-  |                          @UploadedFile() nhận file
-  |                               |
-  |<--- 201 { avatar: "..." } ---- |
-```
-
-### 6.5.3. Cấu hình Multer trong dự án
-
-File `shared/common/config/multer.config.ts`:
+Trong đồ án TodoList Collaboration, Multer được cấu hình tại file `shared/common/config/multer.config.ts` với ba thiết lập chính. Đầu tiên, `memoryStorage()` được chọn làm phương thức lưu trữ — file sẽ được giữ trong RAM dưới dạng buffer thay vì ghi trực tiếp ra disk, cho phép xử lý file trước khi lưu vĩnh viễn. Thứ hai, giới hạn kích thước file được đặt ở mức 5MB. Cuối cùng, `fileFilter` chỉ cho phép các định dạng ảnh JPEG, PNG và GIF:
 
 ```typescript
 import { memoryStorage } from 'multer';
 
 export const avatarMulterConfig = {
   storage: memoryStorage(),
-  // memoryStorage: lưu file vào RAM (buffer) thay vì disk
-  // Lý do: linh hoạt hơn — có thể xử lý trước khi lưu (resize, compress)
-
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB tối đa
+    fileSize: 5 * 1024 * 1024,
   },
-
   fileFilter: (req, file, callback) => {
     const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
     if (allowedMimes.includes(file.mimetype)) {
-      callback(null, true);  // Chấp nhận file
+      callback(null, true);
     } else {
       callback(new Error('Only JPEG, PNG, GIF are allowed'), false);
     }
@@ -59,34 +33,21 @@ export const avatarMulterConfig = {
 };
 ```
 
-Đăng ký trong `UserModule`:
+Cấu hình này được đăng ký vào `UserModule` thông qua `MulterModule.register(avatarMulterConfig)`, cho phép `FileInterceptor` sử dụng các thiết lập đã định nghĩa khi xử lý upload.
 
-```typescript
-@Module({
-  imports: [
-    MulterModule.register(avatarMulterConfig),
-    // Đăng ký config vào DI container của module
-    // FileInterceptor sẽ dùng config này khi xử lý upload
-  ],
-  controllers: [UserController],
-  providers: [UserService],
-})
-export class UserModule {}
-```
+### 6.8.3. Controller nhận file upload
 
-### 6.5.4. Controller nhận file upload
+Tại tầng Controller, endpoint upload avatar sử dụng `FileInterceptor('avatar')` để lấy file từ field tên "avatar" trong form-data. Decorator `@UploadedFile()` kết hợp với `ParseFilePipe` thực hiện validate lần hai ở tầng controller, tạo lớp bảo vệ kép (defense in depth):
 
 ```typescript
 @Post('me/avatar')
 @UseInterceptors(FileInterceptor('avatar'))
-// FileInterceptor('avatar'): lấy file từ field tên "avatar" trong form-data
 uploadAvatar(
   @CurrentUser('id') userId: string,
   @UploadedFile(
     new ParseFilePipe({
       validators: [
         new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-        // Validate lần 2 ở tầng controller (defense in depth)
       ],
     }),
   )
@@ -96,89 +57,44 @@ uploadAvatar(
 }
 ```
 
-### 6.5.5. Service lưu file và cập nhật DB
+### 6.8.4. Service lưu file và cập nhật database
+
+Tại tầng Service, quá trình lưu file diễn ra qua năm bước tuần tự: tìm user và lấy avatar hiện tại, xóa avatar cũ nếu có, tạo tên file unique bằng timestamp, ghi file từ buffer ra disk, và cập nhật field avatar trong database:
 
 ```typescript
 async uploadAvatar(userId: string, file: Express.Multer.File) {
-  // 1. Tìm user, lấy avatar hiện tại
   const user = await this.prisma.user.findUnique({
     where: { id: userId },
     select: { avatar: true },
   });
 
-  // 2. Xóa avatar cũ (nếu có) để tránh tốn disk
   if (user.avatar) {
     const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
-    await fs.unlink(oldPath).catch(() => {}); // Bỏ qua lỗi nếu file không tồn tại
+    await fs.unlink(oldPath).catch(() => {});
   }
 
-  // 3. Tạo tên file unique bằng timestamp
   const filename = `${Date.now()}-${file.originalname}`;
   const filepath = join(process.cwd(), 'uploads', 'avatars', filename);
-
-  // 4. Lưu file từ buffer ra disk
   await fs.writeFile(filepath, file.buffer);
 
-  // 5. Cập nhật avatar field trong DB
   return this.prisma.user.update({
     where: { id: userId },
     data: { avatar: filename },
-    select: this.profileSelect, // Không trả password
+    select: this.profileSelect,
   });
 }
 ```
 
-### 6.5.6. Phục vụ file tĩnh (Static File Serving)
+### 6.8.5. Phục vụ file tĩnh (Static File Serving)
 
-Để ảnh có thể truy cập qua URL, khai báo trong `main.ts`:
+Để ảnh avatar có thể truy cập qua URL, cần khai báo static file serving trong `main.ts`:
 
 ```typescript
 app.useStaticAssets(join(process.cwd(), 'uploads'), {
   prefix: '/uploads/',
 });
-// URL truy cập: http://localhost:3333/uploads/avatars/1711620000000-avatar.jpg
 ```
 
-### 6.5.7. Kết quả
+### 6.8.6. Khi nào dùng và không nên dùng Multer
 
-Test bằng Swagger UI hoặc Hoppscotch:
-- Method: `POST`
-- URL: `http://localhost:3333/api/v1/users/me/avatar`
-- Headers: `Authorization: Bearer <token>`
-- Body: `form-data`, key=`avatar`, value=chọn file ảnh
-
-Response thành công:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "550e8400-...",
-    "email": "vana@example.com",
-    "avatar": "1711620000000-my-photo.jpg",
-    "displayName": "Van A"
-  }
-}
-```
-
-Truy cập ảnh: `http://localhost:3333/uploads/avatars/1711620000000-my-photo.jpg`
-
-### 6.5.8. Khi nào dùng / không nên dùng Multer
-
-| Nên dùng | Không nên dùng |
-|---------|---------------|
-| Upload file ≤ 10MB | Upload file lớn (video, dataset) → dùng presigned URL (S3) |
-| File lưu local hoặc chuyển sang S3 | File cần xử lý realtime (stream) |
-| Prototype và ứng dụng nhỏ-vừa | Production scale lớn → cần CDN |
-
----
-
-## 6.6. Bổ sung: Áp dụng vào đồ án TodoList Collaboration
-
-Kỹ thuật File Upload với Multer được áp dụng trực tiếp vào `UserModule`, endpoint `POST /users/me/avatar`:
-
-- **Validate:** FileFilter chỉ chấp nhận JPEG/PNG/GIF; giới hạn 5MB
-- **Lưu trữ:** `memoryStorage` → ghi ra `uploads/avatars/`
-- **Quản lý:** Tự động xóa ảnh cũ khi upload ảnh mới
-- **Phục vụ:** Static file server với prefix `/uploads/`
-
-Đây là module nền tảng (từ Phần 2) trở thành tính năng thực tế (Phần 3).
+Multer phù hợp với các ứng dụng cần upload file có kích thước nhỏ đến trung bình (dưới 10MB), lưu trữ local hoặc chuyển tiếp sang cloud. Đối với file lớn như video hoặc dataset, nên sử dụng presigned URL với Amazon S3. Khi triển khai production ở quy mô lớn, việc kết hợp với CDN sẽ hiệu quả hơn.

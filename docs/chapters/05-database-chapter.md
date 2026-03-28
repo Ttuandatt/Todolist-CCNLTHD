@@ -949,7 +949,61 @@ Trong ví dụ trên, có thể thấy một số patterns quan trọng. Option 
 
 ---
 
-## 5.9 Tổng kết
+## 5.9. Lỗi thường gặp và Trade-offs (bổ sung)
+
+Khi làm việc với Prisma ORM và cơ sở dữ liệu, nhóm đã nhận diện được một số vấn đề về hiệu năng và những đánh đổi thiết kế quan trọng cần cân nhắc trong quá trình phát triển.
+
+### 5.9.1. Vấn đề N+1 Query — Cạm bẫy phổ biến nhất
+
+Vấn đề N+1 Query là một trong những cạm bẫy phổ biến nhất khi làm việc với ORM. Vấn đề xảy ra khi lấy danh sách các bản ghi kèm theo dữ liệu quan hệ: hệ thống thực hiện 1 query để lấy danh sách chính, sau đó thực hiện thêm N query riêng lẻ cho từng bản ghi để lấy dữ liệu liên quan. Đoạn code dưới đây minh họa cách viết dẫn đến N+1 queries:
+
+```typescript
+// Cách viết gây ra N+1 queries — không nên sử dụng
+const tasks = await this.prisma.task.findMany({ where: { projectId } });
+for (const task of tasks) {
+  task.assignees = await this.prisma.taskAssignment.findMany({
+    where: { taskId: task.id }
+  });
+}
+```
+
+Giải pháp đúng là sử dụng tùy chọn `include` của Prisma để framework tự động thực hiện join trong một query duy nhất, giảm đáng kể số lần truy vấn đến cơ sở dữ liệu:
+
+```typescript
+// Cách viết tối ưu — chỉ 1 query duy nhất
+const tasks = await this.prisma.task.findMany({
+  where: { projectId },
+  include: {
+    assignments: {
+      include: { user: { select: { id: true, name: true, avatar: true } } }
+    },
+    labels: { include: { label: true } },
+    _count: { select: { subtasks: true } }
+  }
+});
+```
+
+### 5.9.2. Trade-off: include vs select
+
+Prisma cung cấp hai cơ chế để kiểm soát dữ liệu trả về: `include` và `select`. Tùy chọn `include` cho phép thêm toàn bộ dữ liệu của các relation vào kết quả, phù hợp khi cần lấy đầy đủ thông tin của các bản ghi liên quan. Ngược lại, `select` chỉ lấy những fields cụ thể được chỉ định, giúp tối ưu hiệu năng bằng cách giảm lượng dữ liệu truyền tải.
+
+Trong đồ án, cả hai cơ chế đều được sử dụng tùy theo ngữ cảnh. Ví dụ, khi lấy danh sách task kèm assignees, nhóm dùng `include` để eager load toàn bộ thông tin người được giao. Trong khi đó, hàm `getProfile()` của UserService sử dụng `select` để loại bỏ field password khỏi kết quả trả về, đảm bảo thông tin nhạy cảm không bị lộ ra ngoài.
+
+### 5.9.3. Khi nào KHÔNG nên dùng Prisma Migrate
+
+Mặc dù Prisma Migrate là công cụ hữu ích cho việc quản lý schema database, có một số tình huống cần đặc biệt thận trọng. Đối với production database chứa dữ liệu quan trọng, luôn phải thực hiện backup trước khi chạy migration. Khi cần đổi tên column, Prisma sẽ thực hiện thao tác DROP rồi ADD thay vì RENAME, dẫn đến mất dữ liệu. Trong trường hợp này, cần tạo migration rỗng và viết SQL tùy chỉnh:
+
+```bash
+# Tạo migration rỗng để viết SQL tùy chỉnh
+npx prisma migrate dev --name rename_column --create-only
+# Sau đó chỉnh sửa file migration.sql trước khi apply
+```
+
+Ngoài ra, một số tính năng đặc thù của database như partitioning hay triggers cũng cần được xử lý bằng raw SQL thay vì thông qua Prisma schema.
+
+---
+
+## 5.10. Tổng kết
 
 Chương này đã trình bày toàn diện về việc làm việc với database trong ứng dụng NestJS sử dụng Prisma ORM. Hành trình bắt đầu từ việc tìm hiểu khái niệm ORM và vai trò của nó như cầu nối giữa thế giới hướng đối tượng trong code và thế giới quan hệ trong database. Sau khi khảo sát các ORM phổ biến trong hệ sinh thái NestJS bao gồm TypeORM, Sequelize, MikroORM, và Mongoose, chúng ta đã lựa chọn Prisma vì những ưu điểm vượt trội về type safety, developer experience, và khả năng tự động hóa migrations.
 

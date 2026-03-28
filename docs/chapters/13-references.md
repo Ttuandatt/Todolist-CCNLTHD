@@ -1,6 +1,6 @@
-# TÀI LIỆU THAM KHẢO
+# Tài liệu tham khảo
 
-Báo cáo này được xây dựng dựa trên nhiều nguồn tài liệu từ tài liệu chính thức của các framework và thư viện, sách và khóa học chuyên sâu, đến các bài viết kỹ thuật của cộng đồng. Dưới đây là danh sách đầy đủ các tài liệu đã được tham khảo, phân nhóm theo tính chất nguồn.
+Báo cáo này được xây dựng dựa trên nhiều nguồn tài liệu từ tài liệu chính thức của các framework và thư viện, sách và khóa học chuyên sâu, đến các bài viết kỹ thuật của cộng đồng. Dưới đây là danh sách đầy đủ các tài liệu đã được tham khảo trong quá trình nghiên cứu và triển khai đồ án, được phân nhóm theo tính chất nguồn.
 
 ## Tài liệu chính thức
 
@@ -43,5 +43,3 @@ Báo cáo này được xây dựng dựa trên nhiều nguồn tài liệu từ
 [16] Auth0 Blog. (2023). *Refresh Tokens: When to Use Them and How They Interact with JWTs*. Truy cập tại: https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them
 
 [17] GitHub. (2024). *Todolist-CCNLTHD — Source code của đồ án*. Truy cập tại: https://github.com/Ttuandatt/Todolist-CCNLTHD
-
-Nội dung đầy đủ đã được tích hợp vào file chính: `docs/chapters/12-references.md`.

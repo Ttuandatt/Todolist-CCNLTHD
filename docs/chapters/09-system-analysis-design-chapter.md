@@ -1,39 +1,35 @@
-# Chương 8: Phân tích và thiết kế hệ thống
+# Chương 9: Phân tích và thiết kế hệ thống
 
 > **Mục tiêu chương học:** Sau khi hoàn thành chương này, bạn sẽ nắm được toàn cảnh dự án TodoList Collaboration — từ yêu cầu chức năng, kiến trúc module, thiết kế cơ sở dữ liệu, đến các quyết định thiết kế quan trọng về API, bảo mật, và chuẩn hóa response. Đây là nền tảng thiết kế để chương tiếp theo triển khai chi tiết từng module.
 
 ---
 
-## 8.1. Tổng quan dự án
+## 9.1. Tổng quan dự án
 
-### 8.1.1. Giới thiệu
+### 9.1.1. Giới thiệu
 
 TodoList Collaboration là ứng dụng quản lý công việc cộng tác, cho phép nhiều người dùng cùng làm việc trong các workspace chung. Dự án được xây dựng bằng NestJS (backend) và React (frontend), sử dụng PostgreSQL làm hệ quản trị cơ sở dữ liệu và Prisma làm ORM.
 
 Ứng dụng hướng đến việc giải quyết bài toán quản lý task trong môi trường nhóm — nơi mỗi thành viên cần theo dõi tiến độ công việc, phân công nhiệm vụ, và trao đổi thông qua bình luận. Khác với các ứng dụng todo đơn giản chỉ phục vụ cá nhân, TodoList Collaboration được thiết kế với hệ thống phân quyền đa cấp (Owner, Admin, Member) để phù hợp với quy trình làm việc thực tế của các nhóm dự án.
 
-### 8.1.2. Các module chức năng
+### 9.1.2. Các module chức năng (cập nhật tháng 3/2026)
 
-Hệ thống được chia thành các module theo nguyên tắc phân tách trách nhiệm, mỗi module đóng gói một domain nghiệp vụ riêng biệt:
+Hệ thống TodoList Collaboration được chia thành các module chức năng độc lập theo nguyên tắc phân tách trách nhiệm, mỗi module đóng gói một domain nghiệp vụ riêng biệt. Tính đến thời điểm hiện tại, hệ thống đã hoàn thành 6 module chính với tổng cộng 44 endpoints, đồng thời có 2 module đang trong giai đoạn chuẩn bị triển khai.
 
-| Module | Chức năng chính | Trạng thái |
-|--------|----------------|------------|
-| **Auth** | Đăng ký, đăng nhập, refresh token, logout, quên/đặt lại mật khẩu | Hoàn thành |
-| **User** | Xem/cập nhật profile, đổi mật khẩu, upload avatar | Hoàn thành |
-| **Workspace** | Tạo/quản lý workspace, mời thành viên, phân quyền | Hoàn thành |
-| **Project** | Tạo/quản lý project trong workspace, archive/unarchive, pin | Hoàn thành |
-| **Label** | Nhãn phân loại dùng chung trong workspace | Sắp triển khai |
-| **Task** | CRUD task, phân công, subtask, filter/sort/pagination | Sắp triển khai |
-| **Comment** | Bình luận trên task | Sắp triển khai |
-| **Activity** | Ghi nhật ký hoạt động hệ thống (service-only) | Sắp triển khai |
-| **Events** | WebSocket Gateway, realtime rooms theo workspace/project/task | Sắp triển khai |
-| **Notification** | Thông báo in-app | Sắp triển khai |
-| **File** | Upload/download file đính kèm (tối đa 50MB) | Sắp triển khai |
-| **Search** | Dashboard cá nhân, tìm kiếm toàn hệ thống | Sắp triển khai |
+| Module | Số endpoints | Chức năng chính | Trạng thái |
+|--------|-------------|----------------|-----------|
+| **Auth** | 6 | Đăng ký, đăng nhập, refresh token, logout, quên/đặt lại mật khẩu | Hoàn thành |
+| **User** | 4 | Xem/cập nhật profile, đổi mật khẩu, upload avatar | Hoàn thành |
+| **Workspace** | 11 | Tạo/quản lý workspace, mời thành viên, phân quyền (Owner/Admin/Member) | Hoàn thành |
+| **Project** | 9 | Tạo/quản lý project, archive, pin project trong workspace | Hoàn thành |
+| **Task** | 14 | CRUD task, phân công thành viên, subtask, nhãn, đổi trạng thái, filter | Hoàn thành |
+| **Mail** | — | Gửi email reset mật khẩu (SendGrid + Mock mode) | Hoàn thành |
+| **Comment** | — | Bình luận trên task, reply | Chưa triển khai |
+| **Notification** | — | Thông báo realtime (WebSocket) | Chưa triển khai |
 
-Chương này phân tích và thiết kế toàn hệ thống, bao gồm kiến trúc module, ERD, thiết kế API, và biểu đồ tuần tự cho các **chức năng chính và tiêu biểu** của từng module đã hoàn thành.
+Tổng cộng, hệ thống cung cấp 44 endpoints hoàn chỉnh, tất cả đều được trang bị đầy đủ validation đầu vào và cơ chế authentication thông qua JWT. Chương này phân tích và thiết kế toàn hệ thống, bao gồm kiến trúc module, ERD, thiết kế API, và biểu đồ tuần tự cho các chức năng chính và tiêu biểu của từng module đã hoàn thành.
 
-### 8.1.3. Biểu đồ Use Case
+### 9.1.3. Biểu đồ Use Case
 
 Hệ thống có năm loại tác nhân (actor) theo thứ bậc kế thừa: **Guest** → **User** → **Member** → **Admin** → **Owner**. Actor cấp cao kế thừa mọi quyền của actor cấp thấp.
 
@@ -134,9 +130,9 @@ Thiết kế phân quyền theo nguyên tắc **Principle of Least Privilege**: 
 
 ---
 
-## 8.2. Kiến trúc hệ thống
+## 9.2. Kiến trúc hệ thống
 
-### 8.2.1. Kiến trúc module
+### 9.2.1. Kiến trúc module
 
 Ứng dụng tuân theo kiến trúc module hóa của NestJS (đã trình bày ở **Chương 4**), với `AppModule` đóng vai trò Root Module điều phối toàn bộ:
 
@@ -203,7 +199,7 @@ graph LR
 
 Cấu trúc ba tầng này phản ánh nguyên tắc **Separation of Concerns**: Controller chỉ tiếp nhận và phân phối request, Service chứa toàn bộ logic nghiệp vụ, DTO đảm bảo dữ liệu đầu vào hợp lệ. Khi cần thay đổi logic nghiệp vụ, chỉ cần sửa Service; khi thêm endpoint mới, chỉ cần sửa Controller. Các tầng hoàn toàn độc lập và có thể test riêng biệt.
 
-### 8.2.2. Sơ đồ phụ thuộc giữa các module
+### 9.2.2. Sơ đồ phụ thuộc giữa các module
 
 ```mermaid
 graph TB
@@ -313,9 +309,9 @@ Nhóm thứ ba là **cross-module service injection** (mũi tên đứt): `Activ
 
 ---
 
-## 8.3. Thiết kế cơ sở dữ liệu
+## 9.3. Thiết kế cơ sở dữ liệu
 
-### 8.3.1. Tổng quan schema
+### 9.3.1. Tổng quan schema
 
 Cơ sở dữ liệu được thiết kế trên PostgreSQL với 17 bảng (models), được định nghĩa thông qua Prisma Schema (đã giới thiệu ở **Chương 5**). Trong phạm vi hai module Auth và User, chúng ta làm việc trực tiếp với bốn bảng chính:
 
@@ -326,7 +322,7 @@ Cơ sở dữ liệu được thiết kế trên PostgreSQL với 17 bảng (mod
 | `password_resets` | Lưu token đặt lại mật khẩu | N-1 với User |
 | `invalidated_tokens` | Danh sách đen access token đã thu hồi | Không có FK |
 
-### 8.3.2. Biểu đồ quan hệ thực thể (ERD)
+### 9.3.2. Biểu đồ quan hệ thực thể (ERD)
 
 **ERD tổng quan hệ thống** — thể hiện quan hệ giữa 17 bảng trong cơ sở dữ liệu:
 
@@ -415,7 +411,7 @@ erDiagram
 
 ERD tổng quan cho thấy bảng `User` là entity trung tâm — liên kết trực tiếp đến 12 bảng khác. Trong ERD chi tiết, bốn bảng phục vụ Auth/User được thể hiện đầy đủ với kiểu dữ liệu và constraint. Đáng chú ý, `InvalidatedToken` là bảng duy nhất không có foreign key — hoạt động độc lập như một "bộ lọc nhanh" cho cơ chế token blacklist.
 
-### 8.3.3. Model User
+### 9.3.3. Model User
 
 Model User là entity trung tâm của toàn hệ thống, mọi module khác đều liên kết về đây:
 
@@ -447,7 +443,7 @@ model User {
 
 Một số quyết định thiết kế đáng chú ý. Field `id` sử dụng UUID (`@default(uuid())`) thay vì auto-increment integer — UUID không tiết lộ tổng số users trong hệ thống và không thể đoán trước, tăng cường bảo mật. Field `email` có constraint `@unique` đảm bảo không có hai tài khoản trùng email. Field `password` lưu chuỗi hash bcrypt, không bao giờ lưu plain text. Enum `UserStatus` với ba giá trị (ACTIVE, INACTIVE, BANNED) cho phép quản trị viên kiểm soát trạng thái tài khoản. Directive `@@map("users")` ánh xạ tên model PascalCase (`User`) sang tên bảng snake_case (`users`) trong PostgreSQL — tuân theo convention đặt tên của SQL.
 
-### 8.3.4. Các model hỗ trợ Authentication
+### 9.3.4. Các model hỗ trợ Authentication
 
 Ba model hỗ trợ phục vụ ba cơ chế bảo mật khác nhau:
 
@@ -491,11 +487,232 @@ model InvalidatedToken {
 
 `InvalidatedToken` không có foreign key đến bảng User vì access token đã chứa sẵn userId trong payload. Bảng này đóng vai trò như một "bộ lọc nhanh" — mỗi request chỉ cần kiểm tra token có nằm trong bảng này hay không (truy vấn bằng `@unique` index, tốc độ O(1)), không cần join với bảng khác.
 
+### 9.3.5. Nhóm Workspace & Collaboration
+
+Nhóm entity này mô hình hóa khái niệm "không gian làm việc chung" — nơi nhiều người dùng cộng tác với nhau thông qua cơ chế thành viên và lời mời. Workspace là đơn vị tổ chức cao nhất, chứa projects, tasks, labels và members. Mối quan hệ giữa các entity trong nhóm này tạo thành chuỗi: User tạo Workspace → mời thành viên qua WorkspaceInvite → thành viên được ghi nhận trong WorkspaceMember → sử dụng Label để phân loại tasks.
+
+**Workspace**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key, auto-generated |
+| `name` | `String` | Tên workspace |
+| `description` | `String?` | Mô tả tùy chọn |
+| `ownerId` | `String` | FK → User, người tạo workspace |
+| `archived` | `Boolean` | Mặc định `false`, đánh dấu lưu trữ |
+| `deletedAt` | `DateTime?` | Soft delete — `null` = đang hoạt động |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+| `updatedAt` | `DateTime` | Tự động cập nhật khi sửa |
+
+Workspace sử dụng kỹ thuật **soft delete** thông qua field `deletedAt`: thay vì xóa vĩnh viễn khỏi database, hệ thống đặt timestamp vào field này, cho phép khôi phục workspace đã xóa nếu cần. Index `@@index([ownerId])` tối ưu truy vấn "liệt kê tất cả workspace của một user".
+
+**WorkspaceMember**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `workspaceId` | `String` | FK → Workspace |
+| `userId` | `String` | FK → User |
+| `role` | `WorkspaceRole` | OWNER / ADMIN / MEMBER |
+| `joinedAt` | `DateTime` | Thời điểm tham gia |
+
+Bảng trung gian này hiện thực hóa quan hệ Many-to-Many giữa User và Workspace. Constraint `@@unique([workspaceId, userId])` đảm bảo mỗi user chỉ xuất hiện một lần trong một workspace. Enum `WorkspaceRole` với ba giá trị (OWNER, ADMIN, MEMBER) cung cấp hệ thống phân quyền ba cấp — Owner có toàn quyền, Admin quản lý thành viên và project, Member chỉ thao tác trên tasks được phân công.
+
+**WorkspaceInvite**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `workspaceId` | `String` | FK → Workspace |
+| `email` | `String` | Email người được mời |
+| `role` | `WorkspaceRole` | Vai trò khi chấp nhận, mặc định MEMBER |
+| `token` | `String` | Token duy nhất (`@unique`) để xác nhận lời mời |
+| `expiresAt` | `DateTime` | Thời hạn lời mời |
+| `acceptedAt` | `DateTime?` | `null` = chưa chấp nhận |
+| `revokedAt` | `DateTime?` | `null` = chưa bị thu hồi |
+| `status` | `InvitationStatus` | PENDING / ACCEPTED / EXPIRED / REVOKED |
+| `invitedByMemberId` | `String` | FK → WorkspaceMember, người gửi lời mời |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+
+WorkspaceInvite sử dụng token-based invitation: mỗi lời mời được gắn một token duy nhất có thời hạn. Composite index `@@index([workspaceId, email, status])` tối ưu truy vấn kiểm tra "email này đã được mời vào workspace chưa" — thao tác thường xuyên nhất khi gửi lời mời mới. Enum `InvitationStatus` quản lý lifecycle hoàn chỉnh của lời mời từ PENDING → ACCEPTED hoặc EXPIRED/REVOKED.
+
+**Label**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `name` | `String` | Tên nhãn |
+| `color` | `String` | Mã màu (hex) |
+| `workspaceId` | `String` | FK → Workspace |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+
+Label thuộc về workspace (không phải project) — cho phép sử dụng cùng một bộ nhãn xuyên suốt các projects trong workspace. Constraint `@@unique([workspaceId, name])` ngăn chặn hai nhãn trùng tên trong cùng một workspace.
+
+### 9.3.6. Nhóm Project & Task Execution
+
+Đây là nhóm entity cốt lõi của ứng dụng, mô hình hóa quy trình quản lý công việc từ project → task → subtask. Chuỗi quan hệ phân cấp Workspace → Project → Task → Subtask phản ánh cách nhóm dự án tổ chức công việc trong thực tế: mỗi workspace chứa nhiều project, mỗi project chứa nhiều task, và mỗi task có thể chia nhỏ thành các subtask.
+
+**Project**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `name` | `String` | Tên project |
+| `description` | `String?` | Mô tả tùy chọn |
+| `workspaceId` | `String` | FK → Workspace |
+| `createdById` | `String` | FK → User, người tạo |
+| `status` | `ProjectStatus` | ACTIVE / ARCHIVED |
+| `isPinned` | `Boolean` | Ghim project lên đầu, mặc định `false` |
+| `color` | `String` | Mã màu hiển thị, mặc định `#3B82F6` |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+| `updatedAt` | `DateTime` | Tự động cập nhật |
+
+Enum `ProjectStatus` chỉ có hai giá trị ACTIVE và ARCHIVED — project không bị xóa mà được archive, giữ lại lịch sử làm việc. Field `isPinned` cho phép user đánh dấu project quan trọng để hiển thị ưu tiên trên giao diện. Field `color` phục vụ UX — mỗi project có màu riêng giúp phân biệt trực quan.
+
+**Task**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `title` | `String` | Tiêu đề task |
+| `description` | `String?` | Mô tả chi tiết |
+| `projectId` | `String` | FK → Project |
+| `createdById` | `String` | FK → User, người tạo |
+| `status` | `TaskStatus` | TODO / IN_PROGRESS / REVIEW / DONE |
+| `priority` | `TaskPriority` | LOW / NORMAL / HIGH / URGENT |
+| `dueDate` | `DateTime?` | Hạn hoàn thành |
+| `startDate` | `DateTime?` | Ngày bắt đầu |
+| `completedAt` | `DateTime?` | Thời điểm hoàn thành thực tế |
+| `position` | `Int` | Thứ tự sắp xếp trong project |
+| `estimatedHours` | `Decimal(5,2)?` | Thời gian ước lượng (giờ) |
+| `actualHours` | `Decimal(5,2)?` | Thời gian thực tế (giờ) |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+| `updatedAt` | `DateTime` | Tự động cập nhật |
+
+Task là entity giàu field nhất trong schema với 14 cột, phản ánh sự phức tạp của quản lý công việc thực tế. Enum `TaskStatus` với bốn giá trị mô hình hóa workflow Kanban: TODO → IN_PROGRESS → REVIEW → DONE. Enum `TaskPriority` cho phép sắp xếp task theo mức độ khẩn cấp. Field `position` (kiểu `Int`) hỗ trợ sắp xếp thứ tự drag-and-drop trên giao diện. Hai field `estimatedHours` và `actualHours` sử dụng kiểu `Decimal(5,2)` — lưu trữ chính xác đến 2 chữ số thập phân, phù hợp cho việc theo dõi thời gian làm việc.
+
+Hệ thống index trên bảng `tasks` được thiết kế cho các truy vấn phổ biến nhất: `@@index([projectId])` cho "danh sách task trong project", `@@index([status])` cho "lọc task theo trạng thái", `@@index([dueDate])` cho "task sắp đến hạn".
+
+**Subtask**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `taskId` | `String` | FK → Task |
+| `title` | `String` | Tiêu đề subtask |
+| `isCompleted` | `Boolean` | Mặc định `false` |
+| `position` | `Int` | Thứ tự sắp xếp |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+
+Subtask có cấu trúc đơn giản hơn Task — chỉ có title và trạng thái hoàn thành (boolean thay vì enum). Quan hệ `onDelete: Cascade` đảm bảo khi xóa task cha, tất cả subtask cũng bị xóa theo.
+
+**TaskAssignment**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `taskId` | `String` | FK → Task |
+| `userId` | `String` | FK → User |
+| `assignedAt` | `DateTime` | Thời điểm phân công |
+
+Bảng trung gian hiện thực hóa quan hệ Many-to-Many giữa Task và User — một task có thể được phân công cho nhiều người, và một người có thể nhận nhiều task. Constraint `@@unique([taskId, userId])` ngăn chặn phân công trùng lặp.
+
+**TaskLabel**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `taskId` | `String` | FK → Task |
+| `labelId` | `String` | FK → Label |
+
+Bảng trung gian kết nối Task với Label (Many-to-Many). Constraint `@@unique([taskId, labelId])` đảm bảo mỗi nhãn chỉ được gắn một lần cho một task. Dual index trên cả `taskId` và `labelId` tối ưu truy vấn theo cả hai chiều: "nhãn nào gắn cho task này?" và "task nào mang nhãn này?".
+
+### 9.3.7. Nhóm Communication, Notification & Activity
+
+Nhóm entity cuối cùng hỗ trợ khía cạnh giao tiếp và theo dõi hoạt động trong hệ thống. Các entity này cung cấp khả năng bình luận trên task, đính kèm file, gửi thông báo, và ghi log mọi thay đổi quan trọng — tạo nên lớp tương tác và minh bạch cần thiết cho ứng dụng cộng tác.
+
+**Comment**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `content` | `String` | Nội dung bình luận |
+| `taskId` | `String` | FK → Task |
+| `authorId` | `String` | FK → User |
+| `parentId` | `String?` | FK → Comment (self-relation), `null` = comment gốc |
+| `isEdited` | `Boolean` | Mặc định `false`, đánh dấu đã chỉnh sửa |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+| `updatedAt` | `DateTime` | Tự động cập nhật |
+
+Comment sử dụng kỹ thuật **self-relation** thông qua field `parentId` để hỗ trợ nested reply (bình luận phân cấp). Khi `parentId` là `null`, đó là comment gốc; khi có giá trị, đó là reply cho comment cha. Quan hệ `@relation("CommentReplies")` cho phép Prisma truy vấn cả hai chiều: từ comment cha lấy danh sách replies, và từ reply tìm comment cha. Thiết lập `onDelete: Cascade` trên parent relation đảm bảo khi xóa comment cha, toàn bộ cây reply cũng bị xóa theo.
+
+**Attachment**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `fileName` | `String` | Tên file gốc |
+| `fileUrl` | `String` | Đường dẫn truy cập file |
+| `fileSize` | `Int` | Kích thước file (bytes) |
+| `mimeType` | `String` | Loại file (image/png, application/pdf, ...) |
+| `taskId` | `String` | FK → Task |
+| `uploadedById` | `String` | FK → User, người upload |
+| `createdAt` | `DateTime` | Thời điểm upload |
+
+Attachment lưu metadata của file đính kèm, không lưu nội dung file trong database. File thực tế được lưu trên disk (hoặc cloud storage), còn bảng này chỉ chứa thông tin tham chiếu như tên, URL, kích thước và MIME type — phù hợp với best practice tách biệt binary storage khỏi relational database.
+
+**Notification**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `type` | `NotificationType` | Loại thông báo (10 giá trị enum) |
+| `title` | `String` | Tiêu đề thông báo |
+| `message` | `String?` | Nội dung chi tiết |
+| `userId` | `String` | FK → User, người nhận |
+| `actorId` | `String?` | FK → User, người gây ra sự kiện |
+| `referenceId` | `String?` | ID của entity liên quan |
+| `referenceType` | `String?` | Loại entity (task, workspace, project) |
+| `isRead` | `Boolean` | Mặc định `false` |
+| `createdAt` | `DateTime` | Thời điểm tạo |
+
+Notification sử dụng thiết kế **polymorphic reference**: thay vì tạo foreign key cụ thể cho từng loại entity, hai field `referenceId` và `referenceType` cho phép tham chiếu linh hoạt đến bất kỳ entity nào (task, workspace, project). Enum `NotificationType` với 10 giá trị bao phủ các sự kiện quan trọng nhất: TASK_ASSIGNED, TASK_STATUS_CHANGED, COMMENT_ADDED, WORKSPACE_INVITE, v.v. Dual relation đến User (`NotificationActor` và `NotificationRecipient`) phân biệt rõ ràng giữa người gây ra sự kiện và người nhận thông báo. Composite index `@@index([userId, isRead])` tối ưu truy vấn "danh sách thông báo chưa đọc của user" — thao tác phổ biến nhất.
+
+**ActivityLog**
+
+| Trường | Kiểu | Ghi chú |
+|--------|------|---------|
+| `id` | `String (UUID)` | Primary key |
+| `entityType` | `String` | Loại entity bị thay đổi |
+| `entityId` | `String` | ID của entity bị thay đổi |
+| `userId` | `String` | FK → User, người thực hiện |
+| `workspaceId` | `String` | FK → Workspace |
+| `action` | `ActivityLogAction` | Hành động (10 giá trị enum) |
+| `oldValue` | `Json?` | Giá trị trước khi thay đổi |
+| `newValue` | `Json?` | Giá trị sau khi thay đổi |
+| `createdAt` | `DateTime` | Thời điểm thực hiện |
+
+ActivityLog là bảng audit trail — ghi lại mọi thay đổi quan trọng trong workspace để phục vụ theo dõi và truy vết. Hai field `oldValue` và `newValue` sử dụng kiểu `Json` của Prisma, cho phép lưu trữ linh hoạt bất kỳ cấu trúc dữ liệu nào mà không cần thêm cột. Enum `ActivityLogAction` tập trung vào các hành động cấp workspace: WORKSPACE_CREATED, MEMBER_ADDED, MEMBER_ROLE_CHANGED, INVITE_SENT, v.v. Composite index `@@index([workspaceId, createdAt])` tối ưu truy vấn "lịch sử hoạt động gần đây trong workspace" — thường được hiển thị dưới dạng activity feed.
+
+### 9.3.8. Tổng quan 17 entities
+
+Schema database hoàn chỉnh gồm 17 entities được phân thành 5 nhóm chức năng:
+
+| Nhóm | Entities | Vai trò |
+|------|----------|---------|
+| Identity | User | Danh tính người dùng |
+| Security | RefreshToken, PasswordReset, InvalidatedToken | Bảo mật và xác thực |
+| Workspace & Collaboration | Workspace, WorkspaceMember, WorkspaceInvite, Label | Không gian làm việc và cộng tác |
+| Project & Task Execution | Project, Task, Subtask, TaskAssignment, TaskLabel | Quản lý công việc |
+| Communication & Activity | Comment, Attachment, Notification, ActivityLog | Giao tiếp và theo dõi |
+
+Toàn bộ schema sử dụng UUID làm primary key, áp dụng `@@map()` để chuyển đổi naming convention từ PascalCase (Prisma) sang snake_case (PostgreSQL), và thiết lập cascade delete cho các quan hệ phụ thuộc. Hệ thống index được đặt có chủ đích cho các truy vấn nghiệp vụ phổ biến nhất, đảm bảo hiệu năng truy vấn ngay cả khi dữ liệu tăng trưởng.
+
 ---
 
-## 8.4. Thiết kế API
+## 9.4. Thiết kế API
 
-### 8.4.1. Quy ước chung
+### 9.4.1. Quy ước chung
 
 Toàn bộ API tuân theo các quy ước RESTful nhất quán:
 
@@ -508,7 +725,7 @@ Toàn bộ API tuân theo các quy ước RESTful nhất quán:
 
 Prefix `/api/v1` phục vụ API versioning — khi cần thay đổi breaking changes trong tương lai, chúng ta triển khai `/api/v2` song song mà không phá vỡ client đang dùng v1.
 
-### 8.4.2. Danh sách API endpoints
+### 9.4.2. Danh sách API endpoints
 
 **Auth Module — 6 endpoints:**
 
@@ -595,7 +812,7 @@ Tất cả endpoints của User Module sử dụng đường dẫn `/me` thay v�
 
 Tổng cộng hệ thống có **46 endpoints** được phân chia rõ ràng theo domain. Mỗi nhóm endpoint bảo vệ bởi hai lớp: `JwtAuthGuard` kiểm tra token hợp lệ, và `WorkspacePermissionGuard` kiểm tra vai trò của người dùng trong workspace cụ thể.
 
-### 8.4.3. Chuẩn hóa Response
+### 9.4.3. Chuẩn hóa Response
 
 Mọi response trong hệ thống đều tuân theo một cấu trúc thống nhất, nhờ hai thành phần hoạt động ở tầng global:
 
@@ -623,7 +840,7 @@ Mọi response trong hệ thống đều tuân theo một cấu trúc thống nh
 
 Sự phối hợp giữa Interceptor (bọc response thành công) và Filter (bắt và format lỗi) tạo ra một "khế ước" rõ ràng: client chỉ cần kiểm tra field `success` để phân biệt thành công và thất bại, thay vì phải phân tích HTTP status code. Đây là nền tảng giúp frontend xử lý response một cách nhất quán cho mọi API call.
 
-### 8.4.4. Validation dữ liệu đầu vào
+### 9.4.4. Validation dữ liệu đầu vào
 
 Mọi dữ liệu từ client đều được validate bởi `ValidationPipe` toàn cục với ba tùy chọn bảo mật:
 
@@ -637,11 +854,11 @@ Kết hợp với DTO classes sử dụng decorators từ `class-validator`, h�
 
 ---
 
-## 8.5. Biểu đồ tuần tự các chức năng chính
+## 9.5. Biểu đồ tuần tự các chức năng chính
 
 Biểu đồ tuần tự (Sequence Diagram) mô tả trình tự tương tác giữa các thành phần trong hệ thống khi xử lý một request. Dưới đây là các luồng chính của hai module Auth và User.
 
-### 8.5.1. Đăng ký tài khoản (Register)
+### 9.5.1. Đăng ký tài khoản (Register)
 
 ```mermaid
 sequenceDiagram
@@ -675,7 +892,7 @@ sequenceDiagram
     Controller-->>Client: 201 Created<br/>{success: true, data: {user, tokens}}
 ```
 
-### 8.5.2. Đăng nhập (Login)
+### 9.5.2. Đăng nhập (Login)
 
 ```mermaid
 sequenceDiagram
@@ -705,7 +922,7 @@ sequenceDiagram
     Controller-->>Client: 200 OK<br/>{success: true, data: {user, tokens}}
 ```
 
-### 8.5.3. Làm mới token (Refresh — Token Rotation)
+### 9.5.3. Làm mới token (Refresh — Token Rotation)
 
 ```mermaid
 sequenceDiagram
@@ -739,7 +956,7 @@ sequenceDiagram
     Controller-->>Client: 200 OK<br/>{success: true, data: {accessToken, refreshToken}}
 ```
 
-### 8.5.4. Đăng xuất (Logout — Token Blacklist)
+### 9.5.4. Đăng xuất (Logout — Token Blacklist)
 
 ```mermaid
 sequenceDiagram
@@ -773,7 +990,7 @@ sequenceDiagram
     Controller-->>Client: 200 OK
 ```
 
-### 8.5.5. Xem hồ sơ cá nhân (Get Profile — Luồng Authenticated)
+### 9.5.5. Xem hồ sơ cá nhân (Get Profile — Luồng Authenticated)
 
 ```mermaid
 sequenceDiagram
@@ -809,7 +1026,7 @@ sequenceDiagram
     Controller-->>Client: 200 OK<br/>{success: true, data: {id, email, name, displayName, ...}}
 ```
 
-### 8.5.6. Đổi mật khẩu (Change Password — Transaction)
+### 9.5.6. Đổi mật khẩu (Change Password — Transaction)
 
 ```mermaid
 sequenceDiagram
@@ -851,7 +1068,7 @@ sequenceDiagram
     Controller-->>Client: 200 OK
 ```
 
-### 8.5.7. Upload Avatar (File Upload)
+### 9.5.7. Upload Avatar (File Upload)
 
 ```mermaid
 sequenceDiagram
@@ -891,7 +1108,7 @@ sequenceDiagram
     Controller-->>Client: 201 Created<br/>{success: true, data: {avatar: "avatar-1710648000-482917536.jpg"}}
 ```
 
-### 8.5.8. Tạo Workspace
+### 9.5.8. Tạo Workspace
 
 ```mermaid
 sequenceDiagram
@@ -921,7 +1138,7 @@ sequenceDiagram
 
 Đáng chú ý: tạo workspace dùng **Prisma Transaction** để đảm bảo tính nguyên tử — hoặc cả workspace lẫn record thành viên Owner đều được tạo, hoặc cả hai đều thất bại. Điều này ngăn trường hợp workspace được tạo nhưng không có owner.
 
-### 8.5.9. Mời thành viên (Invite Member)
+### 9.5.9. Mời thành viên (Invite Member)
 
 ```mermaid
 sequenceDiagram
@@ -965,7 +1182,7 @@ sequenceDiagram
     end
 ```
 
-### 8.5.10. Tạo Project
+### 9.5.10. Tạo Project
 
 ```mermaid
 sequenceDiagram
@@ -992,7 +1209,7 @@ sequenceDiagram
     Controller-->>Client: 201 Created {project}
 ```
 
-### 8.5.11. Tạo Task
+### 9.5.11. Tạo Task
 
 ```mermaid
 sequenceDiagram
@@ -1028,7 +1245,7 @@ sequenceDiagram
     Controller-->>Client: 201 Created {task}
 ```
 
-### 8.5.12. Thay đổi trạng thái Task (Drag & Drop)
+### 9.5.12. Thay đổi trạng thái Task (Drag & Drop)
 
 ```mermaid
 sequenceDiagram
@@ -1065,7 +1282,7 @@ sequenceDiagram
 
 Sequence diagram này thể hiện cơ chế **position reordering**: khi task được kéo vào vị trí mới trong column, các task phía sau được dịch chuyển trước, sau đó mới cập nhật task đang di chuyển. Điều này đảm bảo không có hai task cùng position trong một column.
 
-### 8.5.13. Thêm bình luận (Add Comment)
+### 9.5.13. Thêm bình luận (Add Comment)
 
 ```mermaid
 sequenceDiagram
@@ -1095,9 +1312,9 @@ sequenceDiagram
 
 ---
 
-## 8.6. Thiết kế bảo mật
+## 9.6. Thiết kế bảo mật
 
-### 8.6.1. Chiến lược xác thực — Dual Token
+### 9.6.1. Chiến lược xác thực — Dual Token
 
 Hệ thống sử dụng chiến lược dual-token, kết hợp hai loại JWT token phục vụ hai mục đích khác nhau:
 
@@ -1122,7 +1339,7 @@ graph LR
 
 Access Token có thời hạn ngắn (15 phút) để giảm thiểu rủi ro khi bị lộ — kẻ tấn công chỉ có cửa sổ 15 phút để khai thác. Refresh Token có thời hạn dài hơn (7 ngày) nhưng được lưu trong database, cho phép server thu hồi bất kỳ lúc nào. Hai token sử dụng **secret key riêng biệt** — ngăn chặn việc dùng refresh token (dễ bị lộ vì lưu lâu) để giả mạo access token.
 
-### 8.6.2. Token Blacklist — Thu hồi tức thì
+### 9.6.2. Token Blacklist — Thu hồi tức thì
 
 Bản chất JWT là stateless — server không lưu trạng thái, nên không thể "hủy" một token đã cấp. Khi user đăng xuất, access token vẫn hợp lệ cho đến khi hết hạn. Để giải quyết, hệ thống triển khai cơ chế **Token Blacklist**:
 
@@ -1138,11 +1355,11 @@ flowchart TD
 
 Bảng `InvalidatedToken` đóng vai trò "danh sách đen" nhỏ gọn. Mỗi record chứa token đã thu hồi kèm `expiresAt` — cho phép cron job định kỳ dọn dẹp các records đã hết hạn, giữ bảng luôn gọn nhẹ. Chi phí kiểm tra blacklist là một query `findUnique` theo `@unique` index — tốc độ O(1), không ảnh hưởng đáng kể đến hiệu năng.
 
-### 8.6.3. Token Rotation
+### 9.6.3. Token Rotation
 
 Mỗi lần client gọi `/auth/refresh` để lấy access token mới, refresh token cũ bị thu hồi và cặp token hoàn toàn mới được tạo ra. Kỹ thuật **Token Rotation** này ngăn chặn việc tái sử dụng refresh token bị đánh cắp — kẻ tấn công chỉ có thể dùng token đó đúng một lần.
 
-### 8.6.4. Chiến lược Global Guard + @Public()
+### 9.6.4. Chiến lược Global Guard + @Public()
 
 Thay vì đặt `@UseGuards(JwtAuthGuard)` trên từng controller, hệ thống đăng ký guard toàn cục qua `APP_GUARD` — triết lý **"secure by default"**:
 
@@ -1157,19 +1374,19 @@ flowchart LR
 
 Với thiết kế này, nếu developer quên gắn guard khi tạo endpoint mới, endpoint đó vẫn được bảo vệ. Chỉ khi cố ý đánh dấu `@Public()` thì endpoint mới được truy cập công khai. Cách tiếp cận này an toàn hơn nhiều so với mô hình ngược lại (mặc định mở, phải gắn guard để bảo vệ).
 
-### 8.6.5. Hash mật khẩu
+### 9.6.5. Hash mật khẩu
 
 Mật khẩu được hash bằng bcrypt với 10 salt rounds trước khi lưu vào database. Bcrypt tự động tích hợp giá trị salt ngẫu nhiên vào quá trình hash — hai user có cùng mật khẩu sẽ cho ra hai chuỗi hash hoàn toàn khác nhau, chống tấn công Rainbow Table. Tham số 10 salt rounds tạo ra khoảng 2^10 = 1024 vòng lặp tính toán, cân bằng giữa bảo mật và hiệu năng.
 
-### 8.6.6. Validate mật khẩu
+### 9.6.6. Validate mật khẩu
 
 Mật khẩu đầu vào phải thỏa mãn năm điều kiện: tối thiểu 8 ký tự, có ít nhất một chữ hoa, một chữ thường, một chữ số, và một ký tự đặc biệt. Quy tắc này tuân theo khuyến nghị của OWASP (Open Web Application Security Project), đảm bảo mật khẩu có đủ entropy để chống lại tấn công từ điển (dictionary attack) và brute-force.
 
 ---
 
-## 8.7. Thiết kế File Upload
+## 9.7. Thiết kế File Upload
 
-### 8.7.1. Chiến lược lưu trữ
+### 9.7.1. Chiến lược lưu trữ
 
 Avatar upload sử dụng Multer — middleware xử lý multipart/form-data — với chiến lược `diskStorage` lưu file trực tiếp lên ổ đĩa:
 
@@ -1183,7 +1400,7 @@ uploads/
 
 Tên file được tạo theo format `{fieldname}-{timestamp}-{random}.{ext}`, đảm bảo tính duy nhất và ngăn chặn tấn công path traversal — original filename từ client bị loại bỏ hoàn toàn, chỉ giữ lại phần extension.
 
-### 8.7.2. Quy tắc bảo mật file upload
+### 9.7.2. Quy tắc bảo mật file upload
 
 | Quy tắc | Giá trị | Mục đích |
 |---------|---------|----------|
@@ -1192,13 +1409,13 @@ Tên file được tạo theo format `{fieldname}-{timestamp}-{random}.{ext}`, �
 | Tên file | Random (timestamp + Math.random) | Chống path traversal, trùng tên |
 | Xóa file cũ | Tự động khi upload avatar mới | Tránh tích tụ file rác |
 
-### 8.7.3. Phục vụ Static File
+### 9.7.3. Phục vụ Static File
 
 File đã upload được phục vụ qua NestJS static assets với prefix `/uploads/`. Client truy cập avatar qua URL: `GET /uploads/avatars/{filename}`. Cấu hình prefix giới hạn phạm vi truy cập — chỉ file trong thư mục `uploads/` được serve, các file nhạy cảm khác của dự án không bị lộ.
 
 ---
 
-## 8.8. Cấu hình Global — File main.ts
+## 9.8. Cấu hình Global — File main.ts
 
 File `main.ts` là nơi thiết lập tất cả các thành phần hoạt động ở cấp toàn cục, áp dụng các khái niệm đã học ở **Chương 6** (Pipes, Interceptors, Filters) vào thực tế:
 
@@ -1234,7 +1451,7 @@ Năm lớp cấu hình này hoạt động như một pipeline xử lý mọi re
 
 ---
 
-## 8.9. Tổng kết
+## 9.9. Tổng kết
 
 Chương này đã phân tích và thiết kế toàn hệ thống TodoList Collaboration từ góc nhìn kiến trúc, bao gồm sáu khía cạnh chính:
 

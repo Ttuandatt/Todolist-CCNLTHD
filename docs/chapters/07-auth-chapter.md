@@ -363,7 +363,84 @@ Cách viết này rõ ràng hơn `@Request() req` rồi truy cập `req.user`, v
 
 ---
 
-## 7.6. Luồng hoạt động tổng thể
+### 7.5.5. Token Blacklist — Vô hiệu hóa Token tức thì (bổ sung)
+
+APP_GUARD đã bảo vệ toàn bộ API. Tuy nhiên, còn một lỗ hổng quan trọng cần giải quyết: khi user logout, token cũ vẫn hợp lệ cho đến khi hết hạn tự nhiên. Đây là hệ quả trực tiếp từ bản chất stateless của JWT — server không lưu trữ session, nên một khi token đã được phát hành, không có cách nào "thu hồi" nó.
+
+Kịch bản nguy hiểm có thể xảy ra như sau: user đăng nhập trên máy tính công cộng và nhận token hết hạn sau 15 phút. User logout lúc 9:00, nhưng kẻ tấn công đã capture được token trước đó. Nếu kẻ tấn công sử dụng token đó lúc 9:05, request vẫn thành công vì token chưa hết hạn tự nhiên. Đây là lý do cần triển khai cơ chế Token Blacklist.
+
+Giải pháp được áp dụng trong đồ án là bảng `InvalidatedToken` trong cơ sở dữ liệu. Mỗi khi user logout, access token hiện tại được lưu vào bảng này. `JwtStrategy` kiểm tra blacklist trước mỗi request, đảm bảo token đã bị vô hiệu hóa không thể sử dụng lại. Schema Prisma cho bảng này bao gồm các field: `token` (giá trị token duy nhất), `expiresAt` (thời điểm hết hạn), và `reason` (lý do vô hiệu hóa: LOGOUT, BANNED, hoặc PASSWORD_CHANGED).
+
+Trong `AuthService.logout()`, quá trình xử lý diễn ra hai bước. Đầu tiên, tất cả refresh tokens của user được revoke bằng cách cập nhật field `revokedAt`. Sau đó, access token hiện tại được thêm vào blacklist với thời điểm hết hạn được giải mã từ payload của token:
+
+```typescript
+async logout(userId: string, accessToken: string) {
+  await this.prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+
+  if (accessToken) {
+    const decoded = this.jwtService.decode(accessToken);
+    await this.prisma.invalidatedToken.create({
+      data: {
+        token: accessToken,
+        expiresAt: new Date(decoded.exp * 1000),
+        reason: 'LOGOUT',
+      },
+    });
+  }
+
+  return { message: 'Logout successfully' };
+}
+```
+
+Tại `JwtStrategy.validate()`, mỗi request authenticated đều được kiểm tra qua blacklist trước khi cho phép truy cập:
+
+```typescript
+async validate(req: Request, payload: { sub: string; email: string }) {
+  const token = req?.headers?.authorization?.replace('Bearer ', '');
+
+  if (token) {
+    const isInvalidated = await this.prisma.invalidatedToken.findUnique({
+      where: { token },
+    });
+    if (isInvalidated) {
+      throw new UnauthorizedException('Token is invalidated');
+    }
+  }
+
+  return { id: payload.sub, email: payload.email };
+}
+```
+
+Về trade-off, cơ chế này tốn thêm một query database cho mỗi request authenticated. Đối với hệ thống có lượng traffic cao, có thể thay thế PostgreSQL bằng Redis (in-memory database) để lưu blacklist, giúp giảm đáng kể thời gian truy vấn. Ngoài ra, nên có cron job định kỳ dọn dẹp các record có `expiresAt` đã qua để tránh bảng phình to theo thời gian.
+
+---
+
+## 7.6. Lỗi thường gặp và Trade-offs (bổ sung)
+
+Hệ thống xác thực là một trong những phần phức tạp nhất của ứng dụng, đòi hỏi sự cân nhắc kỹ lưỡng giữa bảo mật và trải nghiệm người dùng. Dưới đây là những lỗi nhóm đã gặp phải và các quyết định trade-off đáng chú ý.
+
+### 7.6.1. Lỗi JWT_SECRET không load — Thứ tự import module
+
+Lỗi "JwtStrategy requires a secret or key" xuất hiện khi ứng dụng khởi động là một trong những vấn đề dễ gặp nhất. Nguyên nhân thường là do `ConfigModule` — module chịu trách nhiệm đọc file `.env` — chưa được khởi tạo trước khi `AuthModule` cần sử dụng biến môi trường `JWT_SECRET`. Giải pháp là đảm bảo `ConfigModule.forRoot({ isGlobal: true })` luôn là import đầu tiên trong `AppModule`, đồng thời kiểm tra file `.env` tồn tại và chứa đầy đủ các biến cần thiết.
+
+### 7.6.2. Trade-off: Access Token ngắn hạn vs dài hạn
+
+Thời hạn của Access Token là một quyết định thiết kế quan trọng. Access Token ngắn hạn (15 phút) mang lại bảo mật cao hơn vì token bị lộ sẽ tự hết hạn nhanh, nhưng đòi hỏi cơ chế refresh phức tạp hơn. Ngược lại, Access Token dài hạn (7 ngày) đơn giản hơn về mặt triển khai nhưng tạo ra window of vulnerability lớn hơn khi token bị đánh cắp.
+
+Trong đồ án, nhóm lựa chọn Access Token với thời hạn 15 phút kết hợp Refresh Token 15 ngày. Đây là phương án cân bằng giữa bảo mật và trải nghiệm người dùng: access token ngắn hạn hạn chế rủi ro khi bị lộ, trong khi refresh token dài hạn giúp người dùng không phải đăng nhập lại thường xuyên.
+
+### 7.6.3. Khi nào KHÔNG dùng APP_GUARD global
+
+Việc đăng ký `JwtAuthGuard` là `APP_GUARD` có nghĩa là toàn bộ API đều yêu cầu JWT token — chiến lược "secure by default". Tuy nhiên, cần lưu ý rằng các endpoint như `POST /auth/register` và `POST /auth/login` bắt buộc phải có decorator `@Public()`, nếu không người dùng sẽ không thể đăng ký hay đăng nhập. Tương tự, Swagger UI và health check endpoint cũng cần được exclude khỏi authentication.
+
+Chiến lược này phù hợp với đồ án vì phần lớn endpoints đều cần xác thực. Tuy nhiên, đối với các hệ thống có nhiều endpoint công khai, việc áp dụng guard ở cấp controller hoặc route cụ thể sẽ hợp lý hơn.
+
+---
+
+## 7.7. Luồng hoạt động tổng thể
 
 Để hiểu toàn cảnh cách các thành phần phối hợp với nhau, hãy xem xét luồng hoạt động khi user thực hiện thao tác tạo task mới trong ứng dụng.
 
@@ -375,7 +452,7 @@ Cuối cùng, `TaskController` nhận request với `request.user` đã sẵn s�
 
 ---
 
-## 7.7. Tổng kết
+## 7.8. Tổng kết
 
 Chương này đã trình bày toàn bộ quy trình xây dựng hệ thống Authentication cho ứng dụng NestJS, từ các khái niệm nền tảng đến triển khai thực tế. Hành trình bắt đầu với việc phân biệt Authentication (xác thực danh tính) và Authorization (phân quyền), tiếp theo là tìm hiểu cơ chế JWT — chuẩn token stateless cho phép server xác thực mà không cần lưu session.
 

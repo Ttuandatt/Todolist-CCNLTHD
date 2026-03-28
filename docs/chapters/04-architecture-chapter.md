@@ -567,7 +567,57 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 ---
 
 
-## 4.6. Tổng kết
+## 4.6. Lỗi thường gặp và Trade-offs (bổ sung)
+
+Trong quá trình phát triển ứng dụng với NestJS, nhóm đã gặp phải một số lỗi phổ biến liên quan đến hệ thống module và Dependency Injection. Việc ghi nhận và phân tích các lỗi này không chỉ giúp tránh lặp lại sai lầm mà còn mang lại hiểu biết sâu hơn về cơ chế hoạt động bên trong của framework.
+
+### 4.6.1. Circular Dependency — Phụ thuộc vòng tròn
+
+Lỗi phụ thuộc vòng tròn xảy ra khi Module A import Module B, đồng thời Module B lại import ngược lại Module A. Khi gặp tình huống này, NestJS không thể xác định thứ tự khởi tạo và sẽ báo lỗi với thông báo tương tự:
+
+```
+Nest cannot create the AuthModule instance.
+The module at index [1] of the AuthModule "imports" array is undefined.
+```
+
+Trong thực tế, lỗi này dễ xuất hiện khi `AuthModule` cần sử dụng `UserService` để tìm kiếm thông tin người dùng khi đăng nhập, trong khi `UserModule` cũng cần `AuthService` để kiểm tra quyền truy cập. Nếu hai module import lẫn nhau, hệ thống sẽ rơi vào vòng lặp phụ thuộc và không thể khởi động.
+
+NestJS cung cấp giải pháp tạm thời thông qua hàm `forwardRef()`, cho phép tham chiếu trước đến module chưa được khởi tạo:
+
+```typescript
+// auth.module.ts
+imports: [forwardRef(() => UserModule)]
+
+// auth.service.ts
+constructor(@Inject(forwardRef(() => UserService)) private userService: UserService) {}
+```
+
+Tuy nhiên, giải pháp tốt hơn về lâu dài là tái cấu trúc thiết kế module để loại bỏ hoàn toàn phụ thuộc vòng tròn, bởi đây thường là dấu hiệu cho thấy việc phân tách trách nhiệm giữa các module chưa hợp lý.
+
+### 4.6.2. Provider không được inject vì quên khai báo
+
+Một lỗi phổ biến khác là khi inject một service vào module nhưng quên thực hiện đầy đủ các bước khai báo cần thiết. Ví dụ, khi inject `MailService` vào `AuthService` mà `MailModule` chưa được import vào `AuthModule`, NestJS sẽ báo lỗi:
+
+```
+Nest can't resolve dependencies of the AuthService (?).
+Please make sure that the argument MailService at index [2] is available in the AuthModule context.
+```
+
+Để khắc phục, cần đảm bảo ba điều kiện được thỏa mãn đồng thời: thứ nhất, `MailService` phải được đánh dấu bằng decorator `@Injectable()`; thứ hai, `MailModule` phải khai báo `MailService` trong mảng `exports`; và thứ ba, `AuthModule` phải import `MailModule` trong mảng `imports`. Thiếu bất kỳ điều kiện nào cũng sẽ dẫn đến lỗi dependency resolution.
+
+### 4.6.3. Trade-off: Provider Scope — Singleton vs Request vs Transient
+
+Theo mặc định, tất cả Provider trong NestJS hoạt động ở chế độ Singleton, tức là chỉ được tạo một lần duy nhất và được tái sử dụng cho mọi request. Đây là lựa chọn tối ưu cho phần lớn các trường hợp sử dụng.
+
+Tuy nhiên, NestJS cũng hỗ trợ hai scope khác cho những tình huống đặc biệt. Scope `REQUEST` tạo instance mới cho mỗi HTTP request, phù hợp khi cần dữ liệu riêng biệt cho từng request chẳng hạn như trong hệ thống multi-tenant cần cách ly dữ liệu giữa các tenant. Scope `TRANSIENT` tạo instance mới mỗi lần inject, dùng cho các stateful providers cần giữ trạng thái riêng.
+
+Cần lưu ý rằng việc sử dụng `REQUEST` scope sẽ làm giảm hiệu năng một cách đáng kể do phải tạo instance mới cho mỗi request đến. Vì vậy, chỉ nên áp dụng scope này khi có nhu cầu thực sự rõ ràng — trong phần lớn trường hợp (khoảng 99%), Singleton scope mặc định là lựa chọn phù hợp nhất.
+
+Nắm vững cả lý thuyết lẫn các lỗi thường gặp, chúng ta đã sẵn sàng thực hành xây dựng một module hoàn chỉnh trong phần bài tập ứng dụng tiếp theo.
+
+---
+
+## 4.7. Tổng kết
 
 Chương này đã trình bày các khái niệm nền tảng tạo nên kiến trúc của NestJS. Hành trình bắt đầu từ TypeScript — ngôn ngữ cung cấp hệ thống kiểu dữ liệu mạnh mẽ, Decorators, và Generics làm nền tảng cho toàn bộ framework. Tiếp theo, chúng ta đã tìm hiểu cách Modules tổ chức ứng dụng thành các khối chức năng độc lập, cách Controllers đóng vai trò tiếp nhận và phân phối HTTP requests, và cách Providers (đặc biệt là Services) chứa business logic thực sự của ứng dụng.
 
