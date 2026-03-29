@@ -743,11 +743,434 @@ Multer phù hợp với các ứng dụng cần upload file có kích thước n
 
 ---
 
-## 6.9. Lỗi thường gặp và Trade-offs (bổ sung)
+## 6.9. WebSocket Gateway — Giao tiếp Realtime
+
+### 6.9.1. WebSocket là gì?
+
+Giao thức HTTP truyền thống hoạt động theo mô hình **request-response**: client gửi request, server trả response, kết nối đóng. Mô hình này không phù hợp cho các tính năng cần cập nhật tức thì như thông báo realtime, chat, hay đồng bộ trạng thái giữa nhiều người dùng — vì client phải liên tục gửi request mới (polling) để kiểm tra dữ liệu mới.
+
+**WebSocket** giải quyết vấn đề này bằng cách thiết lập một kết nối hai chiều (full-duplex) liên tục giữa client và server. Sau khi "bắt tay" (handshake) ban đầu qua HTTP, kết nối được nâng cấp thành WebSocket — từ đó cả hai bên có thể gửi dữ liệu cho nhau bất kỳ lúc nào mà không cần tạo request mới.
+
+```
+HTTP truyền thống (polling):            WebSocket (persistent):
+
+Client ──GET /notifications──▶ Server   Client ◀══════════════▶ Server
+Client ◀──── [] (trống) ──── Server      │  kết nối duy trì liên tục  │
+Client ──GET /notifications──▶ Server    │                            │
+Client ◀──── [] (trống) ──── Server      Server ──push data──▶ Client
+Client ──GET /notifications──▶ Server    Server ──push data──▶ Client
+Client ◀── [1 notification] ─ Server     (server chủ động gửi bất kỳ lúc nào)
+
+→ Tốn nhiều request, delay cao           → Ít tài nguyên, realtime thực sự
+```
+
+### 6.9.2. Socket.io và NestJS Gateway
+
+**Socket.io** là thư viện phổ biến nhất cho WebSocket trong hệ sinh thái Node.js. Nó bổ sung thêm các tính năng quan trọng so với WebSocket thuần: tự động reconnect khi mất kết nối, fallback sang HTTP long-polling nếu WebSocket bị chặn, và hệ thống **rooms** cho phép gom nhóm các kết nối để broadcast có chọn lọc.
+
+NestJS tích hợp Socket.io thông qua package `@nestjs/platform-socket.io` và cung cấp abstraction gọi là **Gateway** — tương đương với Controller nhưng dành cho WebSocket thay vì HTTP:
+
+| Khái niệm HTTP | Tương đương WebSocket |
+|-----------------|----------------------|
+| `@Controller()` | `@WebSocketGateway()` |
+| `@Get()`, `@Post()` | `@SubscribeMessage('eventName')` |
+| `@Body()` | `@MessageBody()` |
+| `@Req()` | `@ConnectedSocket()` |
+| HTTP Request/Response | Socket Events (emit/on) |
+
+Cài đặt:
+
+```bash
+npm install @nestjs/websockets @nestjs/platform-socket.io socket.io
+```
+
+### 6.9.3. Xây dựng EventsGateway
+
+Đây là Gateway xử lý kết nối WebSocket cho toàn bộ ứng dụng. Gateway implement ba lifecycle hooks: `OnGatewayInit` (khởi tạo), `OnGatewayConnection` (client kết nối), và `OnGatewayDisconnect` (client ngắt kết nối).
+
+```typescript
+// src/modules/events/events.gateway.ts
+import {
+  OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit,
+  WebSocketGateway, WebSocketServer,
+  SubscribeMessage, MessageBody, ConnectedSocket,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+
+@WebSocketGateway({ namespace: '/events', cors: true })
+export class EventsGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  @WebSocketServer()
+  server: Server;          // Instance của Socket.io Server, dùng để emit events
+
+  private readonly logger = new Logger(EventsGateway.name);
+
+  constructor(
+    private jwtService: JwtService,
+    private config: ConfigService,
+  ) {}
+
+  afterInit(server: Server) {
+    this.logger.log('EventsGateway initialized');
+  }
+
+  // Xác thực JWT khi client kết nối
+  async handleConnection(socket: Socket) {
+    try {
+      const token =
+        socket.handshake.auth?.token ||
+        socket.handshake.query?.token ||
+        socket.handshake.headers['authorization']
+          ?.toString().replace(/^Bearer\s/, '');
+
+      if (!token) {
+        socket.disconnect(true);   // Từ chối kết nối không có token
+        return;
+      }
+
+      const secret = this.config.get<string>('JWT_SECRET');
+      const payload = await this.jwtService.verifyAsync(token, { secret });
+
+      socket.data.user = payload;  // Gắn thông tin user vào socket
+
+      // Tự động join room cá nhân để nhận thông báo riêng
+      const userId = payload.sub || payload.userId;
+      if (userId) {
+        socket.join(`user:${userId}`);
+      }
+    } catch (err) {
+      socket.disconnect(true);     // Token không hợp lệ → ngắt kết nối
+    }
+  }
+
+  handleDisconnect(socket: Socket) {
+    this.logger.log(`Socket disconnected: ${socket.id}`);
+  }
+
+  // Client gửi event 'joinRoom' để join room cụ thể (vd: project:abc-123)
+  @SubscribeMessage('joinRoom')
+  handleJoinRoom(
+    @MessageBody() room: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (room && typeof room === 'string') {
+      client.join(room);
+    }
+  }
+
+  @SubscribeMessage('leaveRoom')
+  handleLeaveRoom(
+    @MessageBody() room: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (room && typeof room === 'string') {
+      client.leave(room);
+    }
+  }
+}
+```
+
+Điểm quan trọng nhất là **xác thực khi kết nối**: mỗi socket phải gửi JWT token qua `handshake.auth`. Gateway verify token bằng `JwtService` (cùng secret với HTTP API) — nếu token không hợp lệ, kết nối bị từ chối ngay lập tức. Nhờ vậy, chỉ user đã đăng nhập mới có thể kết nối WebSocket.
+
+### 6.9.4. EventsService — Phát sự kiện theo Room
+
+Gateway chỉ xử lý kết nối. Việc phát sự kiện nghiệp vụ được đóng gói trong `EventsService`, cho phép các module khác inject và sử dụng:
+
+```typescript
+// src/modules/events/events.service.ts
+import { Injectable } from '@nestjs/common';
+import { EventsGateway } from './events.gateway';
+
+@Injectable()
+export class EventsService {
+  constructor(private gateway: EventsGateway) {}
+
+  emitToWorkspace(workspaceId: string, event: string, payload: any) {
+    this.emitToRoom(`workspace:${workspaceId}`, event, payload);
+  }
+
+  emitToProject(projectId: string, event: string, payload: any) {
+    this.emitToRoom(`project:${projectId}`, event, payload);
+  }
+
+  emitToTask(taskId: string, event: string, payload: any) {
+    this.emitToRoom(`task:${taskId}`, event, payload);
+  }
+
+  emitToUser(userId: string, event: string, payload: any) {
+    this.emitToRoom(`user:${userId}`, event, payload);
+  }
+
+  emitToRoom(room: string, event: string, payload: any) {
+    const server = this.gateway.server;
+    if (server) {
+      server.to(room).emit(event, payload);  // Gửi event đến MỌI socket trong room
+    }
+  }
+}
+```
+
+Hệ thống rooms được thiết kế theo bốn cấp: `workspace:{id}`, `project:{id}`, `task:{id}`, và `user:{id}`. Khi client mở trang project, frontend gửi event `joinRoom` với room name `project:abc-123` — từ đó mọi thay đổi trong project đó (tạo task, đổi status, comment mới) đều được phát realtime đến tất cả thành viên đang xem cùng project.
+
+### 6.9.5. Đăng ký Module và sử dụng trong nghiệp vụ
+
+```typescript
+// src/modules/events/events.module.ts
+@Module({
+  imports: [JwtModule.register({})],      // Cần JwtService để verify token
+  providers: [EventsGateway, EventsService],
+  exports: [EventsService],              // Export để module khác inject
+})
+export class EventsModule {}
+```
+
+Các module nghiệp vụ import `EventsModule` và inject `EventsService` để phát event tại đúng thời điểm:
+
+```typescript
+// Ví dụ trong TaskService — khi tạo task mới
+async create(userId: string, projectId: string, dto: CreateTaskDto) {
+  const task = await this.prisma.task.create({ data: { ... } });
+
+  // Phát event realtime đến mọi thành viên đang xem project này
+  this.eventsService.emitToProject(projectId, 'task:created', task);
+
+  return task;
+}
+```
+
+### 6.9.6. Bài tập ứng dụng — Xây dựng Gateway đơn giản
+
+**Yêu cầu:** Tạo một `ChatGateway` đơn giản cho phép client gửi và nhận tin nhắn trong một room.
+
+**Hướng dẫn:**
+
+**Bước 1:** Tạo file `chat.gateway.ts`:
+
+```typescript
+@WebSocketGateway({ namespace: '/chat' })
+export class ChatGateway {
+  @WebSocketServer()
+  server: Server;
+
+  @SubscribeMessage('sendMessage')
+  handleMessage(
+    @MessageBody() data: { room: string; message: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    // Phát tin nhắn đến toàn bộ room (trừ người gửi)
+    client.to(data.room).emit('newMessage', {
+      from: client.id,
+      message: data.message,
+      timestamp: new Date(),
+    });
+  }
+}
+```
+
+**Bước 2:** Đăng ký trong module và test bằng công cụ Socket.io Client (hoặc Postman WebSocket).
+
+**Kết quả mong đợi:** Khi client A gửi `sendMessage` với `{ room: 'test', message: 'Hello' }`, client B (đã join room `test`) nhận được event `newMessage` với nội dung tương ứng.
+
+---
+
+## 6.10. Gửi Email với dịch vụ Transactional Mail
+
+### 6.10.1. Transactional Email là gì?
+
+Trong ứng dụng web, có hai loại email chính:
+
+| Loại | Mục đích | Ví dụ |
+|------|---------|-------|
+| **Marketing email** | Gửi hàng loạt đến nhiều người | Newsletter, khuyến mãi |
+| **Transactional email** | Gửi tự động cho 1 người khi có sự kiện cụ thể | Reset mật khẩu, xác nhận đăng ký, thông báo |
+
+Ứng dụng TodoList Collaboration sử dụng transactional email cho tính năng **quên mật khẩu** — khi user yêu cầu reset password, hệ thống gửi email chứa link đặt lại mật khẩu có thời hạn 15 phút.
+
+Thay vì tự vận hành mail server (phức tạp, dễ bị đánh spam), ứng dụng sử dụng **dịch vụ email bên thứ ba** thông qua API. Các dịch vụ phổ biến:
+
+| Dịch vụ | Free tier | Ghi chú |
+|---------|-----------|---------|
+| **Brevo** (SendinBlue) | 300 email/ngày | Phổ biến, có SDK Node.js |
+| **SendGrid** (Twilio) | 100 email/ngày | Tích hợp tốt, API đơn giản |
+| **Mailgun** | 100 email/ngày (trial) | Developer-friendly |
+
+Luồng hoạt động:
+
+```
+User click         Backend tạo          Backend gọi API         Dịch vụ gửi
+"Quên mật khẩu" → reset token     →   dịch vụ email       →   email đến user
+                   (lưu DB, 15 phút)   (SendGrid/Brevo)        (inbox/spam)
+```
+
+### 6.10.2. Cài đặt và cấu hình
+
+Dự án sử dụng SendGrid làm dịch vụ gửi email. Cài đặt package:
+
+```bash
+npm install @sendgrid/mail
+```
+
+Thêm biến môi trường vào `.env`:
+
+```env
+# Email configuration
+SENDGRID_API_KEY="SG.xxxxx"           # API key từ SendGrid dashboard
+MAIL_FROM="noreply@todolist-collab.com" # Địa chỉ gửi (phải verify domain)
+MAIL_DRIVER="mock"                     # "mock" = dev mode, xóa dòng này = gửi thật
+FRONTEND_URL="http://localhost:5173"   # URL frontend cho link trong email
+```
+
+Lưu ý quan trọng: địa chỉ email gửi (`MAIL_FROM`) phải được **xác minh domain** trên SendGrid dashboard trước khi gửi thật. Trong quá trình phát triển, sử dụng `MAIL_DRIVER=mock` để in email ra console thay vì gửi thật.
+
+### 6.10.3. Xây dựng MailService
+
+MailService được thiết kế với **hai chế độ**: mock mode (development) và production mode. Điều này cho phép phát triển và test tính năng liên quan đến email mà không cần API key thật.
+
+```typescript
+// src/shared/mail/mail.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import * as sgMail from '@sendgrid/mail';
+
+@Injectable()
+export class MailService {
+  private readonly logger = new Logger(MailService.name);
+  private readonly isDev = process.env.MAIL_DRIVER === 'mock';
+
+  constructor() {
+    if (!this.isDev && process.env.SENDGRID_API_KEY) {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    }
+  }
+
+  async sendPasswordResetEmail(
+    email: string,
+    name: string,
+    resetLink: string,
+  ): Promise<void> {
+    const msg = {
+      to: email,
+      from: process.env.MAIL_FROM || 'noreply@todolist-collab.com',
+      subject: 'Đặt lại mật khẩu TodoList Collaboration',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px;">
+          <h2>Xin chào ${name},</h2>
+          <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu.</p>
+          <p style="margin: 30px 0;">
+            <a href="${resetLink}"
+               style="padding: 12px 30px; background-color: #4CAF50;
+                      color: white; text-decoration: none; border-radius: 5px;">
+              Đặt lại mật khẩu
+            </a>
+          </p>
+          <p style="color: #666;">Liên kết hết hạn sau 15 phút.</p>
+        </div>
+      `,
+    };
+
+    try {
+      if (this.isDev) {
+        // Dev mode: in ra console thay vì gửi thật
+        this.logger.log(`[DEV MODE] Email gửi tới: ${email}`);
+        this.logger.log(`Reset Link: ${resetLink}`);
+        return;
+      }
+
+      await sgMail.send(msg);   // Production: gửi qua SendGrid API
+      this.logger.log(`Email gửi thành công tới ${email}`);
+    } catch (error) {
+      this.logger.error(`Lỗi gửi email: ${error.message}`);
+      // Không throw — email fail không nên block luồng chính
+    }
+  }
+}
+```
+
+Ba quyết định thiết kế quan trọng:
+
+1. **Mock mode qua biến môi trường** — `MAIL_DRIVER=mock` chuyển toàn bộ output sang console, không cần sửa code khi chuyển giữa dev/prod.
+
+2. **Không throw exception khi gửi thất bại** — email là tác vụ phụ trợ (side effect); nếu gửi email fail mà throw exception, user sẽ nhận lỗi 500 dù reset token đã được tạo thành công trong database. Thiết kế "fire and forget" phù hợp hơn cho transactional email.
+
+3. **HTML template inline** — đơn giản, dễ sửa. Với dự án lớn hơn có thể dùng template engine (Handlebars, EJS) nhưng cho scope đồ án này, inline HTML đủ dùng.
+
+### 6.10.4. Đăng ký Module và tích hợp vào AuthService
+
+```typescript
+// src/shared/mail/mail.module.ts
+@Module({
+  providers: [MailService],
+  exports: [MailService],
+})
+export class MailModule {}
+```
+
+AuthModule import MailModule và inject MailService vào AuthService:
+
+```typescript
+// Trong AuthService — method forgotPassword
+async forgotPassword(email: string) {
+  const user = await this.prisma.user.findUnique({ where: { email } });
+  if (!user) return { message: 'Nếu email tồn tại, bạn sẽ nhận được link reset.' };
+
+  // 1. Tạo reset token (random, lưu DB, hạn 15 phút)
+  const token = crypto.randomUUID();
+  await this.prisma.passwordReset.create({
+    data: { userId: user.id, token, expiresAt: new Date(Date.now() + 15 * 60_000) },
+  });
+
+  // 2. Gửi email chứa link reset
+  const resetLink = `${this.config.get('FRONTEND_URL')}/reset-password?token=${token}`;
+  await this.mailService.sendPasswordResetEmail(user.email, user.displayName, resetLink);
+
+  return { message: 'Nếu email tồn tại, bạn sẽ nhận được link reset.' };
+}
+```
+
+Lưu ý: response luôn trả cùng message dù email có tồn tại hay không — đây là best practice bảo mật để tránh **user enumeration** (kẻ tấn công dò xem email nào đã đăng ký).
+
+### 6.10.5. Bài tập ứng dụng — Gửi email thông báo
+
+**Yêu cầu:** Viết method `sendWelcomeEmail()` trong MailService, gửi email chào mừng khi user đăng ký thành công.
+
+**Hướng dẫn:**
+
+```typescript
+async sendWelcomeEmail(email: string, name: string): Promise<void> {
+  const msg = {
+    to: email,
+    from: process.env.MAIL_FROM || 'noreply@todolist-collab.com',
+    subject: 'Chào mừng tới TodoList Collaboration!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <h2>Chào mừng ${name}!</h2>
+        <p>Tài khoản của bạn đã được tạo thành công.</p>
+        <p>Bạn có thể:</p>
+        <ul>
+          <li>Tạo không gian làm việc (Workspace)</li>
+          <li>Mời thành viên cùng cộng tác</li>
+          <li>Quản lý dự án và nhiệm vụ</li>
+        </ul>
+      </div>
+    `,
+  };
+
+  // Áp dụng cùng pattern mock/prod như sendPasswordResetEmail
+}
+```
+
+**Kết quả mong đợi:** Khi chạy với `MAIL_DRIVER=mock`, console in ra nội dung email. Khi chạy production, email được gửi thật qua SendGrid API.
+
+---
+
+## 6.11. Lỗi thường gặp và Trade-offs
 
 Trong quá trình áp dụng các kỹ thuật nâng cao như ValidationPipe, Interceptor và Middleware, nhóm đã rút ra một số bài học quan trọng về giới hạn và cách sử dụng đúng đắn của từng kỹ thuật.
 
-### 6.9.1. Khi nào KHÔNG dùng ValidationPipe global
+### 6.11.1. Khi nào KHÔNG dùng ValidationPipe global
 
 `ValidationPipe` với tùy chọn `whitelist: true` sẽ tự động loại bỏ mọi field không được khai báo trong DTO. Điều này đảm bảo an toàn cho phần lớn các endpoint, tuy nhiên lại gây vấn đề với một số trường hợp đặc biệt. Đối với endpoint xử lý file upload sử dụng `multipart/form-data`, dữ liệu gửi lên không phải JSON nên không cần ValidationPipe. Tương tự, các webhook endpoint nhận payload từ bên ngoài có thể chứa nhiều field động không thể định nghĩa trước trong DTO.
 
@@ -759,24 +1182,26 @@ Giải pháp cho các trường hợp này là override ValidationPipe ở cấp
 handleWebhook(@Body() payload: any) { ... }
 ```
 
-### 6.9.2. Trade-off: Interceptor vs Middleware
+### 6.11.2. Trade-off: Interceptor vs Middleware
 
 Cả Interceptor và Middleware đều có khả năng xử lý request/response, nhưng có sự khác biệt quan trọng. Middleware chạy trước Guards, ở vòng ngoài cùng của pipeline, phù hợp cho các tác vụ như CORS, parsing, và rate limiting. Trong khi đó, Interceptor chạy sau Guards nhưng trước Controller, có thể truy cập Dependency Injection container và xử lý cả response thông qua RxJS pipe, phù hợp cho transform response và logging có context.
 
 Trong đồ án, nhóm lựa chọn sử dụng Interceptor cho `TransformResponseInterceptor` và `LoggingInterceptor` vì cả hai đều cần xử lý dữ liệu response trả về. Trong khi đó, CORS được cấu hình thông qua Express middleware vì cần chạy trước toàn bộ pipeline xử lý.
 
-### 6.9.3. Lỗi Interceptor không xử lý exception đúng cách
+### 6.11.3. Lỗi Interceptor không xử lý exception đúng cách
 
 Một sai lầm phổ biến khi viết Interceptor là chỉ wrap response thành công mà bỏ qua trường hợp lỗi. Thiết kế đúng đắn là phân tách trách nhiệm rõ ràng: Interceptor chỉ xử lý response thành công bằng cách wrap vào format chuẩn `{success, data, timestamp}`, còn mọi exception đều được xử lý riêng bởi `ExceptionFilter`. Cách tiếp cận này tuân thủ nguyên tắc Single Responsibility, giúp code dễ bảo trì và dễ debug hơn so với việc cố gắng xử lý cả hai trường hợp trong cùng một Interceptor.
 
-Với kiến thức về Pipes, Interceptors, Multer và các trade-offs đã được trình bày, chương tiếp theo sẽ đi vào lĩnh vực bảo mật — xây dựng hệ thống Authentication và Authorization bằng JWT.
-
 ---
 
-## 6.10. Tổng kết
+## 6.12. Tổng kết
 
-Chương này đã dệt nên một bức tranh hoàn chỉnh về cách NestJS kiểm soát và nhào nặn luồng dữ liệu thông qua các kỹ thuật nâng cao. 
+Chương này đã trình bày toàn diện các kỹ thuật nâng cao trong NestJS, chia thành ba nhóm chính:
 
-Chúng ta có **Pipes** (Máy soi an ninh) đóng vai trò chốt chặn cuối cùng trước Controller, đảm bảo mọi dữ liệu đều hợp lệ thông qua sức mạnh của DTO. Có **Interceptors** (Bưu điện tổng) bao bọc hai đầu request/response, cực kỳ đắc lực cho việc định chuẩn dữ liệu trả về và đo lường hiệu suất. Có **Middleware** (Trạm thu phí) đứng ở vòng ngoài để gánh vác các tác vụ mạng cơ bản. Có **Exception Filters** giăng lưới bắt lỗi tập trung, giúp ứng dụng không bao giờ bị Crash màn hình xanh với người dùng. Và cuối cùng là **Custom Decorators**, một "chữ ký" thể hiện đẳng cấp Clean Code trong việc trích xuất dữ liệu ngầm tĩnh. 
+**Nhóm 1 — Kiểm soát luồng dữ liệu (6.1–6.8):** Pipes validate và transform dữ liệu đầu vào, Interceptors bao bọc và chuẩn hóa response, Middleware xử lý các tác vụ ở vòng ngoài, Exception Filters đảm bảo mọi lỗi đều được format nhất quán. Custom Decorators trích xuất dữ liệu ngầm (như user từ JWT), Swagger tự động tạo tài liệu API, và Multer xử lý file upload an toàn.
 
-Sự kết hợp thêm với công cụ tài liệu hóa tự động **Swagger** biến toàn bộ các endpoint thuộc module Task của chúng ta trở thành một hệ thống API mang chuẩn "Enterprise-ready" — Vừa bảo mật (Guard), vừa chính xác (Pipe), có giám sát (Interceptor), chuẩn hóa thông báo lỗi (Filter), và có tài liệu sống (Swagger). Đây chính là lý do vì sao NestJS vượt trội hơn hẳn so với những framework Node.js truyền thống.
+**Nhóm 2 — Giao tiếp realtime (6.10):** WebSocket Gateway thiết lập kết nối hai chiều liên tục giữa client và server thông qua Socket.io. Hệ thống rooms (workspace, project, task, user) cho phép broadcast có chọn lọc — chỉ những thành viên đang xem cùng project mới nhận được event khi có thay đổi.
+
+**Nhóm 3 — Tích hợp dịch vụ bên ngoài (6.11):** MailService tích hợp SendGrid API để gửi transactional email (reset mật khẩu, welcome). Pattern mock/prod qua biến môi trường cho phép phát triển và test mà không cần API key thật.
+
+Sự kết hợp của tất cả các kỹ thuật trên biến ứng dụng NestJS thành một hệ thống "enterprise-ready" — vừa bảo mật (Guard), vừa chính xác (Pipe), có giám sát (Interceptor), chuẩn hóa thông báo lỗi (Filter), giao tiếp realtime (WebSocket), và có tài liệu sống (Swagger). Chương tiếp theo sẽ đi vào lĩnh vực bảo mật — xây dựng hệ thống Authentication và Authorization bằng JWT.

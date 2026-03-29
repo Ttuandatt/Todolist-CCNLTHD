@@ -570,22 +570,22 @@ Theo đuổi 100% coverage không phải lúc nào cũng là mục tiêu đúng 
 
 ---
 
-## 8.8. Bai tap ung dung — Viet Unit Test cho TaskService
+## 8.8. Bài tập ứng dụng — Viết Unit Test cho TaskService
 
-### 8.8.1. Yeu cau bai tap
+### 8.8.1. Yêu cầu bài tập
 
-Dua tren kien thuc da hoc trong chuong nay, hay viet bo unit test hoan chinh cho TaskService bao gom bon method chinh: `create()`, `findAll()`, `update()`, va `delete()`. Moi method can co it nhat hai test case: mot cho truong hop thanh cong (happy path) va mot cho truong hop loi (error case).
+Dựa trên kiến thức đã học trong chương này, hãy viết bộ unit test hoàn chỉnh cho TaskService bao gồm bốn method chính: `create()`, `findAll()`, `update()`, và `delete()`. Mỗi method cần có ít nhất hai test case: một cho trường hợp thành công (happy path) và một cho trường hợp lỗi (error case).
 
-### 8.8.2. Huong dan thuc hien
+### 8.8.2. Hướng dẫn thực hiện
 
-**Buoc 1:** Tao file `task.service.spec.ts` trong thu muc `src/task/` (neu chua co).
+**Bước 1:** Tạo file `task.service.spec.ts` trong thư mục `src/task/` (nếu chưa có).
 
-**Buoc 2:** Thiet lap TestingModule voi mock PrismaService theo cau truc da trinh bay o muc 8.4.
+**Bước 2:** Thiết lập TestingModule với mock PrismaService theo cấu trúc đã trình bày ở mục 8.4.
 
-**Buoc 3:** Viet cac test case theo danh sach sau:
+**Bước 3:** Viết các test case theo danh sách sau:
 
 ```typescript
-// task/task.service.spec.ts — Bai tap hoan chinh
+// task/task.service.spec.ts — Bài tập hoàn chỉnh
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { TaskService } from './task.service';
@@ -618,10 +618,10 @@ describe('TaskService', () => {
     jest.clearAllMocks();
   });
 
-  // Test 1: create — truong hop thanh cong
+  // Test 1: create — trường hợp thành công
   describe('create', () => {
     it('should create and return a new task', async () => {
-      const dto = { title: 'Bai tap chuong 8', priority: 'HIGH' };
+      const dto = { title: 'Bài tập chương 8', priority: 'HIGH' };
       const expected = { id: 'uuid-1', ...dto, status: 'TODO' };
       jest.spyOn(prisma.task, 'create').mockResolvedValue(expected as any);
 
@@ -632,7 +632,7 @@ describe('TaskService', () => {
     });
   });
 
-  // Test 2: findAll — truong hop co du lieu va khong co du lieu
+  // Test 2: findAll — trường hợp có dữ liệu và không có dữ liệu
   describe('findAll', () => {
     it('should return array of tasks for a project', async () => {
       const tasks = [{ id: '1', title: 'Task A' }];
@@ -652,7 +652,7 @@ describe('TaskService', () => {
     });
   });
 
-  // Test 3: update — thanh cong va that bai
+  // Test 3: update — thành công và thất bại
   describe('update', () => {
     it('should update and return modified task', async () => {
       const updated = { id: 'uuid-1', title: 'Updated', status: 'DONE' };
@@ -675,7 +675,7 @@ describe('TaskService', () => {
     });
   });
 
-  // Test 4: delete — thanh cong va that bai
+  // Test 4: delete — thành công và thất bại
   describe('delete', () => {
     it('should delete and return the task', async () => {
       const task = { id: 'uuid-1', title: 'To delete' };
@@ -703,9 +703,9 @@ describe('TaskService', () => {
 });
 ```
 
-### 8.8.3. Ket qua mong doi
+### 8.8.3. Kết quả mong đợi
 
-Sau khi hoan thanh bai tap va chay `npm run test`, ket qua mong doi se hien thi nhu sau:
+Sau khi hoàn thành bài tập và chạy `npm run test`, kết quả mong đợi sẽ hiển thị như sau:
 
 ```
  PASS  src/task/task.service.spec.ts
@@ -728,14 +728,14 @@ Snapshots:   0 total
 Time:        2.847 s
 ```
 
-Tat ca 7 test case deu pass (dau tich xanh), nghia la TaskService xu ly dung ca truong hop thanh cong lan truong hop loi. Thoi gian chay chi khoang 3 giay — minh chung cho uu diem toc do cua unit test so voi integration test hay E2E test.
+Tất cả 7 test case đều pass (dấu tích xanh), nghĩa là TaskService xử lý đúng cả trường hợp thành công lẫn trường hợp lỗi. Thời gian chạy chỉ khoảng 3 giây — minh chứng cho ưu điểm tốc độ của unit test so với integration test hay E2E test.
 
 ---
 
-## 8.9. Tong ket
+## 8.9. Tổng kết
 
-Trong chuong nay, chung ta da tim hieu toan bo quy trinh kiem thu don vi trong NestJS, tu ly thuyet den thuc hanh. Chung ta bat dau voi cac khai niem nen tang ve kiem thu phan mem, hieu duoc su khac biet giua ba cap do kiem thu (Unit, Integration, E2E) va tai sao unit test nam o day kim tu thap kiem thu voi so luong nhieu nhat. Tiep theo, chung ta lam quen voi bo cong cu Jest va @nestjs/testing — hai thanh phan cot loi de viet test trong he sinh thai NestJS.
+Trong chương này, chúng ta đã tìm hiểu toàn bộ quy trình kiểm thử đơn vị trong NestJS, từ lý thuyết đến thực hành. Chúng ta bắt đầu với các khái niệm nền tảng về kiểm thử phần mềm, hiểu được sự khác biệt giữa ba cấp độ kiểm thử (Unit, Integration, E2E) và tại sao unit test nằm ở đáy kim tự tháp kiểm thử với số lượng nhiều nhất. Tiếp theo, chúng ta làm quen với bộ công cụ Jest và @nestjs/testing — hai thành phần cốt lõi để viết test trong hệ sinh thái NestJS.
 
-Phan trong tam cua chuong la ky thuat Mocking — cach thay the dependency that bang doi tuong gia de dat duoc su co lap trong unit test. Thong qua TestingModule va co che Dependency Injection, viec mock dependency trong NestJS tro nen tu nhien va truc quan. Chung ta da ap dung ky thuat nay de viet bo test hoan chinh cho TaskService (kiem tra business logic) va TaskController (kiem tra lop dieu phoi HTTP), bao phu ca truong hop thanh cong lan truong hop loi.
+Phần trọng tâm của chương là kỹ thuật Mocking — cách thay thế dependency thật bằng đối tượng giả để đạt được sự cô lập trong unit test. Thông qua TestingModule và cơ chế Dependency Injection, việc mock dependency trong NestJS trở nên tự nhiên và trực quan. Chúng ta đã áp dụng kỹ thuật này để viết bộ test hoàn chỉnh cho TaskService (kiểm tra business logic) và TaskController (kiểm tra lớp điều phối HTTP), bao phủ cả trường hợp thành công lẫn trường hợp lỗi.
 
-Cuoi cung, chung ta hoc cach do code coverage de danh gia muc do kiem thu, voi nguyen tac rang 70-80% la nguong hop ly cho hau het du an, va chat luong test quan trong hon so luong. Voi kien thuc ve kiem thu, chung ta da hoan thanh toan bo nen tang ky thuat can thiet. Phan tiep theo se ap dung tat ca vao viec phan tich, thiet ke va trien khai do an TodoList Collaboration.
+Cuối cùng, chúng ta học cách đo code coverage để đánh giá mức độ kiểm thử, với nguyên tắc rằng 70-80% là ngưỡng hợp lý cho hầu hết dự án, và chất lượng test quan trọng hơn số lượng. Với kiến thức về kiểm thử, chúng ta đã hoàn thành toàn bộ nền tảng kỹ thuật cần thiết. Phần tiếp theo sẽ áp dụng tất cả vào việc phân tích, thiết kế và triển khai đồ án TodoList Collaboration.
