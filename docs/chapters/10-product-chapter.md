@@ -24,10 +24,13 @@ Todolist-CCNLTHD/
 │   │   │   ├── user/                     ← Quản lý hồ sơ người dùng
 │   │   │   ├── workspace/                ← Không gian làm việc nhóm
 │   │   │   ├── project/                  ← Dự án trong workspace
-│   │   │   └── task/                     ← Công việc trong project
+│   │   │   ├── task/                     ← Công việc trong project
+│   │   │   ├── comment/                  ← Bình luận trong task
+│   │   │   ├── notification/             ← Thông báo cho người dùng
+│   │   │   └── events/                   ← WebSocket Gateway (real-time)
 │   │   ├── shared/                       ← Infrastructure dùng chung
 │   │   │   ├── prisma/                   ← PrismaService, PrismaModule
-│   │   │   ├── mail/                     ← MailService (SendGrid/Mock)
+│   │   │   ├── mail/                     ← MailService (Brevo/Mock)
 │   │   │   └── common/
 │   │   │       ├── config/               ← Multer config (file upload)
 │   │   │       ├── filters/              ← HttpExceptionFilter
@@ -42,16 +45,25 @@ Todolist-CCNLTHD/
 │   └── package.json
 ├── frontend/                             ← React + TypeScript + Vite
 │   └── src/
-│       ├── pages/                        ← LoginPage, RegisterPage, ...
+│       ├── pages/                        ← Login, Register, Dashboard, ...
+│       │   ├── LoginPage.tsx
+│       │   ├── RegisterPage.tsx
+│       │   ├── ForgotPasswordPage.tsx
+│       │   ├── ResetPasswordPage.tsx
+│       │   ├── DashboardPage.tsx
+│       │   └── ProfileSettingsPage.tsx
 │       ├── stores/                       ← Zustand state management
-│       ├── components/                   ← ProtectedRoute, Layout, ...
-│       └── lib/                          ← axios instance, validators
+│       │   └── auth.store.ts
+│       ├── components/                   ← ProtectedRoute, GuestRoute, Layout
+│       ├── lib/                          ← axios instance, validators
+│       └── types/                        ← TypeScript type definitions
+│           └── api.ts
 └── docs/                                 ← Tài liệu dự án
 ```
 
-Việc tách thư mục `modules/` khỏi `shared/` giúp phân biệt rõ ràng giữa code nghiệp vụ (feature code) và code hạ tầng (infrastructure code). Mỗi feature module tuân theo cấu trúc nhất quán gồm bốn thành phần: DTOs để validate đầu vào, Service chứa business logic, Controller định nghĩa API endpoints, và Module kết nối các thành phần lại với nhau.
+Việc tách thư mục `modules/` khỏi `shared/` giúp phân biệt rõ ràng giữa code nghiệp vụ (feature code) và code hạ tầng (infrastructure code). Hệ thống gồm **8 feature modules**: Auth, User, Workspace, Project, Task xử lý nghiệp vụ CRUD chính; Comment và Notification bổ sung tương tác cộng tác; Events cung cấp kênh WebSocket để đẩy dữ liệu real-time tới client. Mỗi feature module tuân theo cấu trúc nhất quán gồm bốn thành phần: DTOs để validate đầu vào, Service chứa business logic, Controller định nghĩa API endpoints, và Module kết nối các thành phần lại với nhau.
 
-Thư mục `shared/prisma/` được đánh dấu `@Global()` vì PrismaService là thành phần nền tảng được sử dụng ở mọi module mà không cần khai báo import lại. Các filters và interceptors trong `shared/common/` được đăng ký global trong `main.ts`, tự động áp dụng cho toàn bộ API — đảm bảo mọi response đều được chuẩn hóa và mọi request đều được ghi log.
+Thư mục `shared/prisma/` được đánh dấu `@Global()` vì PrismaService là thành phần nền tảng được sử dụng ở mọi module mà không cần khai báo import lại. `shared/mail/` sử dụng Brevo API để gửi email giao dịch (đặt lại mật khẩu, xác nhận email, chào mừng), hỗ trợ mock mode khi phát triển local. Các filters và interceptors trong `shared/common/` được đăng ký global trong `main.ts`, tự động áp dụng cho toàn bộ API — đảm bảo mọi response đều được chuẩn hóa và mọi request đều được ghi log.
 
 ---
 
@@ -65,7 +77,7 @@ Toàn bộ codebase của dự án được viết bằng TypeScript, tận dụ
 
 ### 9.2.2. Nhóm kỹ thuật Kiến trúc NestJS (Chương 4)
 
-Hệ thống được tổ chức thành 5 feature modules (Auth, User, Workspace, Project, Task), mỗi module đóng gói trọn vẹn một domain nghiệp vụ. Dependency Injection là cơ chế kết nối các tầng: mọi Service đều inject `PrismaService` để truy cập database mà không cần tạo instance thủ công, đảm bảo loose coupling và dễ thay thế implementation. PrismaModule được khai báo là `@Global()` — chỉ cần import một lần tại AppModule mà toàn bộ 5 modules đều sử dụng được. Lifecycle Hooks (`onModuleInit`, `onModuleDestroy`) trong PrismaService đảm bảo kết nối database được mở và đóng đúng thời điểm, tránh connection leak.
+Hệ thống được tổ chức thành 8 feature modules (Auth, User, Workspace, Project, Task, Comment, Notification, Events), mỗi module đóng gói trọn vẹn một domain nghiệp vụ. Dependency Injection là cơ chế kết nối các tầng: mọi Service đều inject `PrismaService` để truy cập database mà không cần tạo instance thủ công, đảm bảo loose coupling và dễ thay thế implementation. PrismaModule được khai báo là `@Global()` — chỉ cần import một lần tại AppModule mà toàn bộ 8 modules đều sử dụng được. Lifecycle Hooks (`onModuleInit`, `onModuleDestroy`) trong PrismaService đảm bảo kết nối database được mở và đóng đúng thời điểm, tránh connection leak.
 
 ### 9.2.3. Nhóm kỹ thuật Prisma ORM (Chương 5)
 
@@ -83,9 +95,21 @@ Hệ thống xác thực được xây dựng trên nền JWT với chiến lư�
 
 Đặc biệt, cơ chế Token Blacklist giải quyết hạn chế cố hữu của JWT stateless: khi user logout, access token được lưu vào bảng `InvalidatedToken` và `JwtStrategy.validate()` kiểm tra blacklist trước mỗi request, đảm bảo token bị vô hiệu hóa tức thì. Custom decorators `@Public()` và `@CurrentUser()` giúp code controller sạch sẽ, biểu đạt rõ ý định mà không cần truy cập trực tiếp vào object request của Express. Mật khẩu được mã hóa bằng bcrypt với salt rounds = 10, đảm bảo không bao giờ lưu plaintext password trong database.
 
-### 9.2.6. Bảng tổng hợp tích hợp
+### 9.2.6. Nhóm kỹ thuật WebSocket và Giao tiếp thời gian thực (Chương 9)
 
-Bảng dưới đây tổng hợp tỷ lệ tích hợp theo từng nhóm kỹ thuật, cho thấy toàn bộ 31 kỹ thuật đã học đều được áp dụng vào đồ án.
+Module Events sử dụng `@WebSocketGateway()` từ `@nestjs/websockets` kết hợp Socket.IO để thiết lập kênh giao tiếp real-time giữa server và client. `EventsGateway` đăng ký các namespace cho từng loại sự kiện (task updated, comment added, notification new), cho phép client nhận cập nhật tức thì mà không cần polling. `EventsService` đóng vai trò trung gian — các module nghiệp vụ (Task, Comment, Notification) inject `EventsService` và gọi các method như `emitToProject()`, `emitToTask()`, `emitToUser()` để phát sự kiện tới đúng phòng (room) tương ứng.
+
+Module Comment cho phép người dùng bình luận trực tiếp trên task và trả lời bình luận (reply). Khi một comment mới được tạo, `CommentService` đồng thời gọi `EventsService.emitToTask()` để thông báo real-time và `NotificationService.create()` để tạo thông báo cho người sở hữu task.
+
+Module Notification quản lý thông báo cho người dùng. Mỗi khi có sự kiện quan trọng (comment mới, task được giao, thay đổi trạng thái), hệ thống tự động tạo notification và đẩy qua WebSocket tới client bằng `EventsService.emitToUser()`.
+
+### 9.2.7. Nhóm kỹ thuật Gửi email giao dịch
+
+`MailService` trong `shared/mail/` sử dụng Brevo API (trước đây là Sendinblue) để gửi email giao dịch. Hệ thống hỗ trợ ba loại email: đặt lại mật khẩu (password reset), xác nhận email (email verification), và chào mừng thành viên mới (welcome). Mỗi email được thiết kế với HTML template responsive, chứa nút call-to-action và thông tin hết hạn. Khi phát triển local, biến `MAIL_DRIVER=mock` chuyển sang chế độ in email ra console thay vì gửi thật, giúp developer test luồng forgot password mà không cần cấu hình SMTP.
+
+### 9.2.8. Bảng tổng hợp tích hợp
+
+Bảng dưới đây tổng hợp tỷ lệ tích hợp theo từng nhóm kỹ thuật, cho thấy toàn bộ kỹ thuật đã học đều được áp dụng vào đồ án.
 
 | Nhóm kỹ thuật | Số kỹ thuật đã học | Số kỹ thuật đã tích hợp | Tỷ lệ |
 |--------------|-------------------|------------------------|-------|
@@ -94,9 +118,11 @@ Bảng dưới đây tổng hợp tỷ lệ tích hợp theo từng nhóm kỹ t
 | Prisma ORM (Ch5) | 8 | 8 | 100% |
 | Pipes & Interceptors (Ch6) | 5 | 5 | 100% |
 | Authentication & JWT (Ch7) | 7 | 7 | 100% |
-| **Tổng cộng** | **31** | **31** | **100%** |
+| WebSocket & Real-time (Ch9) | 3 | 3 | 100% |
+| Email giao dịch (Brevo) | 2 | 2 | 100% |
+| **Tổng cộng** | **36** | **36** | **100%** |
 
-Bên cạnh các kỹ thuật đã tích hợp, một số kỹ thuật nâng cao như WebSocket/Gateway, RolesGuard (phân quyền chi tiết), GraphQL và Microservices chưa được đưa vào do giới hạn về phạm vi và thời gian. Phạm vi đồ án tập trung vào REST API và các module nghiệp vụ cốt lõi. Các kỹ thuật này được xác định là hướng phát triển trong tương lai, sẽ được trình bày ở Chương 11.
+Bên cạnh các kỹ thuật đã tích hợp, một số kỹ thuật nâng cao như RolesGuard (phân quyền chi tiết theo vai trò), GraphQL và Microservices chưa được đưa vào do giới hạn về phạm vi và thời gian. Các kỹ thuật này được xác định là hướng phát triển trong tương lai, sẽ được trình bày ở Chương 11.
 
 ---
 
@@ -255,10 +281,13 @@ JWT_REFRESH_EXPIRES_IN="15d"
 PORT=3333
 FRONTEND_URL="http://localhost:5173"
 
-# Mail (mock mode khi phát triển local)
+# Mail (Brevo — gửi email đặt lại mật khẩu, xác nhận, chào mừng)
+# MAIL_DRIVER="mock" → in email ra console (dùng khi phát triển local)
+# MAIL_DRIVER="brevo" → gửi email thật qua Brevo API (dùng khi triển khai)
 MAIL_DRIVER="mock"
-MAIL_FROM="noreply@todolist.local"
-SENDGRID_API_KEY=""
+BREVO_API_KEY="your-brevo-api-key"
+BREVO_SENDER_EMAIL="noreply@yourdomain.com"
+BREVO_SENDER_NAME="TodoList Collaboration"
 ```
 
 **Bước 4 — Khởi động PostgreSQL bằng Docker:**
@@ -313,4 +342,4 @@ Sau khi khởi động thành công, hệ thống cung cấp các điểm truy c
 
 ## 9.5. Tổng kết
 
-Chương này đã trình bày sản phẩm tổng hợp TodoList Collaboration dưới bốn góc nhìn. Về cấu trúc mã nguồn, dự án được tổ chức theo mô hình Infrastructure-separated Architecture với 5 feature modules và các shared services dùng chung. Về tích hợp kỹ thuật, toàn bộ 31 kỹ thuật đã học ở Phần 2 đều được áp dụng vào đồ án, đạt tỷ lệ tích hợp 100% trên 5 nhóm kiến thức. Về kết quả vận hành, hệ thống chạy được luồng chính end-to-end với 44 endpoints hoàn chỉnh, có minh chứng cụ thể cho Token Blacklist, Validation và chuẩn hóa Response. Về khả năng triển khai, hướng dẫn cài đặt 7 bước cho phép bất kỳ ai có đủ công cụ đều có thể chạy thử hệ thống trên máy local.
+Chương này đã trình bày sản phẩm tổng hợp TodoList Collaboration dưới bốn góc nhìn. Về cấu trúc mã nguồn, dự án được tổ chức theo mô hình Infrastructure-separated Architecture với 8 feature modules (Auth, User, Workspace, Project, Task, Comment, Notification, Events) và 3 shared services dùng chung (Prisma, Mail, Common). Về tích hợp kỹ thuật, toàn bộ 36 kỹ thuật đã học đều được áp dụng vào đồ án, đạt tỷ lệ tích hợp 100% trên 7 nhóm kiến thức — bao gồm cả WebSocket real-time và gửi email giao dịch qua Brevo. Về kết quả vận hành, hệ thống chạy được luồng chính end-to-end với đầy đủ endpoints, có minh chứng cụ thể cho Token Blacklist, Validation và chuẩn hóa Response. Về khả năng triển khai, hướng dẫn cài đặt 7 bước cho phép bất kỳ ai có đủ công cụ đều có thể chạy thử hệ thống trên máy local.

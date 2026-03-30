@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy'; // JwtStrategy — custom strategy để validate JWT token
 import { MailModule } from '../../shared/mail/mail.module'; // MailModule — gửi email
 
+
 @Module({
   imports: [
     PassportModule, // Đăng ký Passport — cho phép dùng AuthGuard('jwt')

@@ -1,4 +1,4 @@
-# Luồng Test API — Auth & User Module
+# Luồng Test API — Tất cả Modules
 
 > **Base URL:** `http://localhost:3333/api/v1`
 > **Tool:** Hoppscotch (import file `backend/docs/hoppscotch-collection.json` → OpenAPI)
@@ -766,18 +766,254 @@
 
 ---
 
-# 📊 Summary: Test Coverage
+# 6. Comment Module (`/tasks/:taskId/comments/*`)
 
-| Module | # Flows | # Test Cases | Status |
-|--------|---------|--------------|--------|
-| **Auth** | 8 | 21 | ✅ Implemented |
-| **User** | 8 | 22 | ✅ Implemented |
-| **Workspace** | 9 | 23 | 🔄 In Progress |
-| **Project** | 5 | 11 | ⏳ Pending |
-| **Task** | 14 | 43 | ⏳ Pending |
-| **TOTAL** | **44** | **120**+ | — |
+> Các API: `create comment`, `reply comment`
+> **Tất cả endpoint đều cần JWT token**
 
 ---
 
-**Last Updated:** 27/03/2026
-**Version:** 2.0 (Added Workspace, Project, Task flows)
+## 6.1. Tạo Comment cho Task — Happy path
+
+> **Điều kiện:** Có task từ Flow 5.1, đã login
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/auth/login` | `{"email":"auth1@test.com","password":"Password@123"}` | `200` | Lưu `accessToken` |
+| 2 | `POST` | `/tasks/{{taskId}}/comments` | Header + `{"content":"This is a comment"}` | `201` — comment object | Lưu `commentId` |
+
+**Kiểm tra response bước 2:**
+- `id`, `content`, `taskId`, `authorId`, `parentId` (null), `createdAt`
+- `author` object: `id`, `name`, `avatar`
+- `content` = `"This is a comment"`
+
+---
+
+## 6.2. Reply Comment — Happy path
+
+> **Điều kiện:** Có comment từ Flow 6.1
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/tasks/{{taskId}}/comments/{{commentId}}/reply` | Header + `{"content":"This is a reply"}` | `201` — reply object | `parentId` = commentId |
+| 2 | Kiểm tra | — | — | `parentId` = `{{commentId}}` | Reply gắn đúng parent |
+
+**Kiểm tra response:**
+- `parentId` = `{{commentId}}` (không null)
+- `content` = `"This is a reply"`
+- `author` object có đầy đủ
+
+---
+
+## 6.3. Comment — Notification tự động
+
+> **Mục đích:** Kiểm tra comment tự động tạo notification cho task creator/assignees
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/auth/register` | `{"email":"commenter@test.com","password":"Password@123","fullname":"Commenter","displayName":"C"}` | `201` | User khác |
+| 2 | Invite + Accept | (Flow 3.5) | — | — | commenter join workspace |
+| 3 | `POST` | `/tasks/{{taskId}}/comments` | Commenter's header + `{"content":"New comment!"}` | `201` | Comment bởi người khác |
+| 4 | Kiểm tra WebSocket / DB | — | — | Task creator nhận notification `COMMENT_ADDED` | Verify notification tự động |
+
+---
+
+## 6.4. Comment — Error cases
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `POST` | `/tasks/{{taskId}}/comments` | Header + `{"content":""}` | `400` — content required |
+| 2 | `POST` | `/tasks/{{taskId}}/comments` | Header + `{}` | `400` — content required |
+| 3 | `POST` | `/tasks/invalid-uuid/comments` | Header + `{"content":"Test"}` | `400` — invalid UUID |
+| 4 | `POST` | `/tasks/00000000-0000-0000-0000-000000000000/comments` | Header + `{"content":"Test"}` | `404` — Task không tồn tại |
+| 5 | `POST` | `/tasks/{{taskId}}/comments/00000000-0000-0000-0000-000000000000/reply` | Header + `{"content":"Reply"}` | `404` — Comment cha không tồn tại |
+| 6 | `POST` | `/tasks/{{taskId}}/comments` | Không có Authorization header | `401` — Unauthorized |
+
+---
+
+### Checklist Comment Module
+
+- [ ] 6.1 — Create comment happy path (201)
+- [ ] 6.1 — Response có author object đầy đủ
+- [ ] 6.2 — Reply comment happy path (201)
+- [ ] 6.2 — Reply parentId đúng
+- [ ] 6.3 — Comment tạo notification cho task creator
+- [ ] 6.4 — Create comment content rỗng (400)
+- [ ] 6.4 — Create comment body rỗng (400)
+- [ ] 6.4 — Create comment invalid UUID (400)
+- [ ] 6.4 — Create comment task không tồn tại (404)
+- [ ] 6.4 — Reply parent comment không tồn tại (404)
+- [ ] 6.4 — Create comment không có token (401)
+
+---
+
+# 7. Notification Module (`/notifications/*`)
+
+> Các API: `create notification` (test endpoint)
+> **Tất cả endpoint đều cần JWT token**
+> **Lưu ý:** Notification thường được tạo tự động bởi hệ thống (khi comment, assign task, ...). Endpoint POST chỉ dùng để test.
+
+---
+
+## 7.1. Tạo Notification — Happy path (Test endpoint)
+
+> **Điều kiện:** Đã login, có user ID
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | `POST` | `/notifications` | Header + `{"type":"COMMENT_ADDED","title":"Test Notification","message":"This is a test","userId":"{{targetUserId}}"}` | `201` — notification object | Lưu `notificationId` |
+
+**Kiểm tra response:**
+- `id`, `type`, `title`, `message`, `userId`, `actorId`, `isRead` (false), `createdAt`
+- `type` = `"COMMENT_ADDED"`
+- `isRead` = `false` (mặc định)
+
+---
+
+## 7.2. Notification — Tự động qua Comment
+
+> **Mục đích:** Verify luồng end-to-end: comment → notification → WebSocket push
+
+| Bước | Method | Endpoint | Body / Header | Expected | Ghi chú |
+|------|--------|----------|---------------|----------|---------|
+| 1 | User A tạo task | (Flow 5.1) | — | Task `createdById` = User A | |
+| 2 | User B gán vào task | (Flow 5.5) | — | `TaskAssignment` created | |
+| 3 | User C comment | `POST /tasks/{{taskId}}/comments` | C's header + `{"content":"Check this!"}` | `201` | |
+| 4 | Kiểm tra DB | — | — | Notification cho User A (creator) + User B (assignee), không có cho User C (author) | |
+
+---
+
+## 7.3. Notification — Validation & Error cases
+
+| Bước | Method | Endpoint | Body / Header | Expected |
+|------|--------|----------|---------------|----------|
+| 1 | `POST` | `/notifications` | Header + `{"type":"INVALID_TYPE","title":"Test","userId":"{{userId}}"}` | `400` — invalid enum type |
+| 2 | `POST` | `/notifications` | Header + `{"type":"COMMENT_ADDED","title":"","userId":"{{userId}}"}` | `400` — title required |
+| 3 | `POST` | `/notifications` | Header + `{}` | `400` — validation errors |
+| 4 | `POST` | `/notifications` | Không có Authorization header | `401` — Unauthorized |
+
+---
+
+### Checklist Notification Module
+
+- [ ] 7.1 — Create notification happy path (201)
+- [ ] 7.1 — Response có isRead = false mặc định
+- [ ] 7.2 — Comment tạo notification cho creator + assignees
+- [ ] 7.2 — Comment không tạo notification cho chính author
+- [ ] 7.3 — Create notification invalid type (400)
+- [ ] 7.3 — Create notification title rỗng (400)
+- [ ] 7.3 — Create notification body rỗng (400)
+- [ ] 7.3 — Create notification không có token (401)
+
+---
+
+# 8. WebSocket / Events Module (`/events` namespace)
+
+> **Protocol:** Socket.IO (namespace `/events`)
+> **Connection URL:** `ws://localhost:3333/events`
+> **Authentication:** Token qua `socket.handshake.auth.token` hoặc `socket.handshake.query.token`
+> **Tool:** Hoppscotch Realtime → Socket.IO, hoặc dùng script Node.js bên dưới
+
+---
+
+## 8.1. Kết nối WebSocket — Happy path
+
+> **Điều kiện:** Đã login, có `accessToken`
+
+| Bước | Hành động | Expected | Ghi chú |
+|------|-----------|----------|---------|
+| 1 | Connect tới `ws://localhost:3333/events` với `auth: { token: "{{accessToken}}" }` | Kết nối thành công | Server log: `Socket xxx joined user:{{userId}}` |
+| 2 | Kiểm tra server log | `EventsGateway: Socket xxx joined user:{{userId}}` | Tự động join room `user:{{userId}}` |
+
+**Script test (Node.js):**
+
+```js
+const io = require('socket.io-client');
+const socket = io('http://localhost:3333/events', {
+  auth: { token: '{{accessToken}}' },
+});
+socket.on('connect', () => console.log('Connected:', socket.id));
+socket.on('disconnect', (reason) => console.log('Disconnected:', reason));
+socket.on('notification:new', (data) => console.log('Notification:', data));
+socket.on('comment:created', (data) => console.log('Comment:', data));
+```
+
+---
+
+## 8.2. Kết nối WebSocket — Không có token / Token sai
+
+| Bước | Hành động | Expected |
+|------|-----------|----------|
+| 1 | Connect tới `/events` **không gửi token** | Bị disconnect ngay lập tức |
+| 2 | Connect tới `/events` với `auth: { token: "invalid-token" }` | Bị disconnect — `authentication failed` |
+
+---
+
+## 8.3. Join/Leave Room
+
+> **Mục đích:** Kiểm tra subscribe/unsubscribe theo project hoặc task
+
+| Bước | Hành động | Expected |
+|------|-----------|----------|
+| 1 | Emit `joinRoom` với data `"project:{{projectId}}"` | Server log: `Socket xxx joined room: project:{{projectId}}` |
+| 2 | User khác tạo task trong project | Client nhận event `task:created` | Real-time push |
+| 3 | Emit `leaveRoom` với data `"project:{{projectId}}"` | Server log: `Socket xxx left room: project:{{projectId}}` |
+| 4 | User khác tạo task nữa | Client **không** nhận event | Đã unsubscribe |
+
+---
+
+## 8.4. Nhận Real-time Events — End-to-end
+
+> **Mục đích:** Verify luồng: action → EventsService → WebSocket → client
+
+| Bước | User A (WebSocket client) | User B (REST API) | Expected on User A |
+|------|--------------------------|-------------------|-------------------|
+| 1 | Connect + joinRoom `task:{{taskId}}` | — | Connected |
+| 2 | Đang lắng nghe `comment:created` | `POST /tasks/{{taskId}}/comments` + `{"content":"Hello!"}` | Nhận event `comment:created` với comment data |
+| 3 | Đang lắng nghe `notification:new` | (hệ thống tự tạo notification) | Nhận event `notification:new` nếu User A là creator/assignee |
+
+---
+
+## 8.5. WebSocket Events Reference
+
+| Event Name | Trigger | Room | Payload |
+|------------|---------|------|---------|
+| `comment:created` | Tạo comment mới | `task:{{taskId}}` | Comment object + author |
+| `comment:replied` | Reply comment | `task:{{taskId}}` | Reply object + author |
+| `notification:new` | Notification tạo mới | `user:{{userId}}` | Notification object + actor |
+| `task:created` | Tạo task (nếu emit) | `project:{{projectId}}` | Task object |
+| `task:updated` | Cập nhật task (nếu emit) | `project:{{projectId}}` | Updated task |
+
+---
+
+### Checklist WebSocket Module
+
+- [ ] 8.1 — Connect với valid token thành công
+- [ ] 8.1 — Tự động join room user:{{userId}}
+- [ ] 8.2 — Connect không token → disconnect
+- [ ] 8.2 — Connect token sai → disconnect
+- [ ] 8.3 — joinRoom thành công
+- [ ] 8.3 — leaveRoom thành công
+- [ ] 8.4 — Nhận event comment:created real-time
+- [ ] 8.4 — Nhận event notification:new real-time
+
+---
+
+# Summary: Test Coverage
+
+| Module | # Flows | # Test Cases | Status |
+|--------|---------|--------------|--------|
+| **Auth** | 9 | 22 | Ready |
+| **User** | 8 | 22 | Ready |
+| **Workspace** | 9 | 23 | Ready |
+| **Project** | 5 | 11 | Ready |
+| **Task** | 14 | 43 | Ready |
+| **Comment** | 4 | 11 | Ready |
+| **Notification** | 3 | 8 | Ready |
+| **WebSocket** | 5 | 8 | Ready |
+| **TOTAL** | **57** | **148**+ | — |
+
+---
+
+**Last Updated:** 30/03/2026
+**Version:** 3.0 (Added Comment, Notification, WebSocket flows)
