@@ -53,6 +53,7 @@ export class UserService {
             data: {
                 ...(dto.displayName ? { displayName: dto.displayName } : {}), // Cập nhật displayName nếu được cung cấp
                 ...(dto.bio ? { bio: dto.bio } : {}), // Cập nhật bio nếu được cung cấp
+                ...(dto.name ? { name: dto.name } : {}), // Cập nhật name nếu được cung cấp
             },
             select: this.profileSelect, // Chỉ chọn các trường đã định nghĩa trong profileSelect
         });
@@ -111,18 +112,16 @@ export class UserService {
             throw new NotFoundException('User not found');
         }
 
-        const avatar = user.avatar;
-        if (avatar) {
-            await fs.unlink(join(__dirname, '..', '..', 'uploads', 'avatars', avatar));
+        // Xóa avatar cũ nếu có
+        if (user.avatar) {
+            const oldPath = join(process.cwd(), 'uploads', 'avatars', user.avatar);
+            await fs.unlink(oldPath).catch(() => {});
         }
 
-        const filename = `${Date.now()}-${file.originalname}`;
-        const filepath = join(__dirname, '..', '..', 'uploads', 'avatars', filename);
-        await fs.writeFile(filepath, file.buffer);
-
+        // diskStorage đã lưu file vào disk rồi → chỉ cần lấy file.filename
         const updated = await this.prisma.user.update({
             where: { id: userId },
-            data: { avatar: filename },
+            data: { avatar: file.filename },
             select: this.profileSelect,
         });
         return updated;

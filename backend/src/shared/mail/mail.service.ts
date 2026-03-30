@@ -1,33 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-// Dùng require để bypass hoàn toàn bộ kiểm tra của TypeScript cho thư viện này
-// eslint-disable-next-line @typescript-eslint/no-var- Wood-var-requires
-const Brevo = require('@getbrevo/brevo');
+// Brevo SDK v5 — dùng BrevoClient thay vì TransactionalEmailsApi
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { BrevoClient } = require('@getbrevo/brevo');
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly isDev = process.env.MAIL_DRIVER === 'mock';
-  
-  // Khai báo là any để không bị bắt lỗi property
-  private readonly brevoApi: any;
+
+  // Brevo SDK v5: dùng BrevoClient → client.transactionalEmails
+  private readonly brevoClient: any;
 
   constructor() {
+    if (this.isDev) {
+      this.logger.log('Mail service đang chạy ở chế độ MOCK (không gửi email thật).');
+      return;
+    }
+
     try {
-      // Đối với nodenext/commonjs mix, thư viện thường nằm ở .default hoặc trực tiếp
-      const BrevoModule = Brevo.default || Brevo;
-      
-      // SỬA TẠI ĐÂY: Dùng BrevoModule thay vì Brevo
-      if (BrevoModule && BrevoModule.TransactionalEmailsApi) {
-        this.brevoApi = new BrevoModule.TransactionalEmailsApi();
-        
-        if (!this.isDev && process.env.BREVO_API_KEY) {
-          this.brevoApi.setApiKey(0, process.env.BREVO_API_KEY);
-        }
-        this.logger.log('Brevo API đã được khởi tạo thành công.');
-      } else {
-        this.logger.error('Thư viện Brevo không được load đúng cách: Không tìm thấy TransactionalEmailsApi');
+      if (!process.env.BREVO_API_KEY) {
+        this.logger.error('BREVO_API_KEY chưa được cấu hình!');
+        return;
       }
+
+      this.brevoClient = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+      this.logger.log('Brevo API đã được khởi tạo thành công (SDK v5).');
     } catch (e) {
       this.logger.error(`Lỗi khởi tạo Brevo: ${e.message}`);
     }
@@ -51,19 +49,19 @@ export class MailService {
       return;
     }
 
-    if (!this.brevoApi) {
-      this.logger.error('Brevo API chưa được khởi tạo!');
+    if (!this.brevoClient) {
+      this.logger.error('Brevo Client chưa được khởi tạo!');
       return;
     }
 
     try {
-      // Gửi mail bằng object literal (Brevo SDK v5 chấp nhận cái này)
-      await this.brevoApi.sendTransacEmail({
+      // Brevo SDK v5: client.transactionalEmails.sendTransacEmail()
+      await this.brevoClient.transactionalEmails.sendTransacEmail({
         subject: subject,
         htmlContent: htmlContent,
         sender: this.sender,
         to: [{ email, name }],
-        replyTo: { email: 'support@todolist-collab.com' },
+        replyTo: { email: this.sender.email },
       });
       
       this.logger.log(`Email gửi thành công tới ${email}`);

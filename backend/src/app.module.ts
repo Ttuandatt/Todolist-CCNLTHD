@@ -21,9 +21,12 @@ import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    // isGlobal: true → không cần import ConfigModule ở từng module con
-    // .forRoot() = load file .env tại root project
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      // envFilePath: load theo thứ tự ưu tiên — .env.local ghi đè .env
+      // .env.local chứa secrets riêng (API keys), đã nằm trong .gitignore
+    }),
     AuthModule,
     MailModule,
     PrismaModule,
