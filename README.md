@@ -1,5 +1,7 @@
 # README — Git Workflow & Quy Trình Phát Triển
 
+> **Lưu ý:** Frontend đã được tách riêng. Repo này chỉ chứa **Backend API**. Test API qua Swagger UI tại http://localhost:3333/api-docs
+
 Tài liệu này đóng vai trò hướng dẫn chung cho toàn đội khi làm việc trên nhánh `main`. Mục tiêu là giữ lịch sử git gọn gàng, tránh conflict lớn và đảm bảo mỗi tính năng đi đúng quy trình: **Spec → Plan → Thực thi → Review → Merge**.
 
 ---
