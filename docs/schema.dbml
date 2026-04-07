@@ -1,0 +1,345 @@
+// ============================================================
+// TodoList Collaboration — Database Schema (DBML)
+// Generated from: backend/prisma/schema.prisma
+// Visualize at: https://dbdiagram.io
+// ============================================================
+
+// ======================== ENUMS ========================
+
+Enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+Enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+Enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+Enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+Enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+Enum NotificationType {
+  TASK_ASSIGNED
+  TASK_UNASSIGNED
+  TASK_STATUS_CHANGED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  COMMENT_ADDED
+  COMMENT_REPLY
+  MENTIONED
+  WORKSPACE_INVITE
+  PROJECT_CREATED
+}
+
+Enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+Enum ActivityLogAction {
+  WORKSPACE_CREATED
+  WORKSPACE_RENAMED
+  WORKSPACE_ARCHIVED
+  WORKSPACE_DELETED
+  MEMBER_ADDED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  INVITE_SENT
+  INVITE_ACCEPTED
+  INVITE_REVOKED
+}
+
+// ======================== TABLES ========================
+
+Table users {
+  id varchar [pk, note: 'UUID']
+  email varchar [unique, not null]
+  password varchar [not null]
+  name varchar [not null]
+  avatar varchar
+  status UserStatus [not null, default: 'ACTIVE']
+  emailVerified boolean [not null, default: false]
+  lastLoginAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+  bio varchar
+  displayName varchar
+
+  indexes {
+    email
+  }
+}
+
+Table workspaces {
+  id varchar [pk, note: 'UUID']
+  name varchar [not null]
+  description varchar
+  ownerId varchar [not null, ref: > users.id]
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+  archived boolean [not null, default: false]
+  deletedAt timestamp
+
+  indexes {
+    ownerId
+  }
+}
+
+Table workspace_members {
+  id varchar [pk, note: 'UUID']
+  workspaceId varchar [not null, ref: > workspaces.id]
+  userId varchar [not null, ref: > users.id]
+  role WorkspaceRole [not null, default: 'MEMBER']
+  joinedAt timestamp [not null, default: `now()`]
+
+  indexes {
+    (workspaceId, userId) [unique]
+    workspaceId
+    userId
+  }
+}
+
+Table projects {
+  id varchar [pk, note: 'UUID']
+  name varchar [not null]
+  description varchar
+  workspaceId varchar [not null, ref: > workspaces.id]
+  createdById varchar [not null, ref: > users.id]
+  status ProjectStatus [not null, default: 'ACTIVE']
+  isPinned boolean [not null, default: false]
+  color varchar [not null, default: '#3B82F6']
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+
+  indexes {
+    workspaceId
+    createdById
+  }
+}
+
+Table tasks {
+  id varchar [pk, note: 'UUID']
+  title varchar [not null]
+  description varchar
+  projectId varchar [not null, ref: > projects.id]
+  createdById varchar [not null, ref: > users.id]
+  status TaskStatus [not null, default: 'TODO']
+  priority TaskPriority [not null, default: 'NORMAL']
+  dueDate timestamp
+  startDate timestamp
+  completedAt timestamp
+  position integer [not null, default: 0]
+  estimatedHours decimal(5,2)
+  actualHours decimal(5,2)
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+
+  indexes {
+    projectId
+    createdById
+    status
+    dueDate
+  }
+}
+
+Table subtasks {
+  id varchar [pk, note: 'UUID']
+  taskId varchar [not null, ref: > tasks.id]
+  title varchar [not null]
+  isCompleted boolean [not null, default: false]
+  position integer [not null, default: 0]
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    taskId
+  }
+}
+
+Table task_assignments {
+  id varchar [pk, note: 'UUID']
+  taskId varchar [not null, ref: > tasks.id]
+  userId varchar [not null, ref: > users.id]
+  assignedAt timestamp [not null, default: `now()`]
+
+  indexes {
+    (taskId, userId) [unique]
+    taskId
+    userId
+  }
+}
+
+Table labels {
+  id varchar [pk, note: 'UUID']
+  name varchar [not null]
+  color varchar [not null]
+  workspaceId varchar [not null, ref: > workspaces.id]
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    (workspaceId, name) [unique]
+    workspaceId
+  }
+}
+
+Table task_labels {
+  id varchar [pk, note: 'UUID']
+  taskId varchar [not null, ref: > tasks.id]
+  labelId varchar [not null, ref: > labels.id]
+
+  indexes {
+    (taskId, labelId) [unique]
+    taskId
+    labelId
+  }
+}
+
+Table comments {
+  id varchar [pk, note: 'UUID']
+  content varchar [not null]
+  taskId varchar [not null, ref: > tasks.id]
+  authorId varchar [not null, ref: > users.id]
+  parentId varchar [ref: > comments.id, note: 'Self-referencing for replies']
+  isEdited boolean [not null, default: false]
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+
+  indexes {
+    taskId
+    authorId
+    parentId
+  }
+}
+
+Table attachments {
+  id varchar [pk, note: 'UUID']
+  fileName varchar [not null]
+  fileUrl varchar [not null]
+  fileSize integer [not null]
+  mimeType varchar [not null]
+  taskId varchar [not null, ref: > tasks.id]
+  uploadedById varchar [not null, ref: > users.id]
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    taskId
+    uploadedById
+  }
+}
+
+Table notifications {
+  id varchar [pk, note: 'UUID']
+  type NotificationType [not null]
+  title varchar [not null]
+  message varchar
+  userId varchar [not null, ref: > users.id, note: 'Recipient']
+  actorId varchar [ref: > users.id, note: 'Who triggered the notification']
+  referenceId varchar [note: 'Polymorphic reference to task/project/etc']
+  referenceType varchar
+  isRead boolean [not null, default: false]
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    (userId, isRead)
+    (userId, createdAt)
+  }
+}
+
+Table activity_logs {
+  id varchar [pk, note: 'UUID']
+  entityType varchar [not null]
+  entityId varchar [not null]
+  userId varchar [not null, ref: > users.id]
+  workspaceId varchar [not null, ref: > workspaces.id]
+  oldValue json
+  newValue json
+  createdAt timestamp [not null, default: `now()`]
+  action ActivityLogAction [not null]
+
+  indexes {
+    (workspaceId, createdAt)
+    userId
+    (entityType, entityId)
+  }
+}
+
+Table invitations {
+  id varchar [pk, note: 'UUID']
+  workspaceId varchar [not null, ref: > workspaces.id]
+  email varchar [not null]
+  role WorkspaceRole [not null, default: 'MEMBER']
+  token varchar [unique, not null]
+  expiresAt timestamp [not null]
+  acceptedAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+  invitedByMemberId varchar [not null, ref: > workspace_members.id]
+  revokedAt timestamp
+  status InvitationStatus [not null, default: 'PENDING']
+
+  indexes {
+    workspaceId
+    (workspaceId, status)
+    (workspaceId, email, status)
+    email
+  }
+}
+
+Table refresh_tokens {
+  id varchar [pk, note: 'UUID']
+  token varchar [unique, not null]
+  userId varchar [not null, ref: > users.id]
+  expiresAt timestamp [not null]
+  revokedAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    token
+    userId
+  }
+}
+
+Table password_resets {
+  id varchar [pk, note: 'UUID']
+  userId varchar [not null, ref: > users.id]
+  token varchar [unique, not null]
+  expiresAt timestamp [not null]
+  usedAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    token
+    userId
+  }
+}
+
+Table invalidated_tokens {
+  id varchar [pk, note: 'UUID']
+  token varchar [unique, not null]
+  expiresAt timestamp [not null]
+  reason varchar
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    expiresAt
+  }
+}
