@@ -454,8 +454,18 @@ Cuối cùng, `TaskController` nhận request với `request.user` đã sẵn s�
 
 ## 7.8. Tổng kết
 
-Chương này đã trình bày toàn bộ quy trình xây dựng hệ thống Authentication cho ứng dụng NestJS, từ các khái niệm nền tảng đến triển khai thực tế. Hành trình bắt đầu với việc phân biệt Authentication (xác thực danh tính) và Authorization (phân quyền), tiếp theo là tìm hiểu cơ chế JWT — chuẩn token stateless cho phép server xác thực mà không cần lưu session.
+Chương này đã trình bày một cách có hệ thống quá trình thiết kế và triển khai lớp bảo mật cho ứng dụng NestJS, bao quát từ nền tảng lý thuyết đến hiện thực hóa trong mã nguồn dự án TodoList Collaboration.
 
-Phần triển khai đã xây dựng AuthModule hoàn chỉnh với register flow (kiểm tra trùng email, hash password, tạo user, cấp token) và login flow (tìm user, so sánh password, cấp token). JwtStrategy đóng vai trò cầu nối giữa Passport.js và NestJS, tự động verify token và trích xuất user identity. Guards hoạt động như lớp bảo vệ, quyết định request nào được phép truy cập controller.
+**Về mặt lý thuyết**, chương đã phân tích hai trụ cột của bảo mật ứng dụng web: Authentication (xác thực danh tính — "Bạn là ai?") và Authorization (phân quyền — "Bạn được làm gì?"), đồng thời làm rõ cơ chế hoạt động của JWT (JSON Web Token) theo chuẩn RFC 7519 với cấu trúc ba phần Header–Payload–Signature và ưu điểm stateless so với session-based authentication truyền thống.
 
-Điểm quan trọng nhất là cách các thành phần này kết nối với module Task — JwtAuthGuard bảo vệ TaskController, `@CurrentUser()` decorator cung cấp thông tin user hiện tại, và TaskService sử dụng userId để gắn task với người tạo. Mô hình này đảm bảo mỗi thao tác trên task đều được liên kết với một user đã xác thực, tạo nền tảng cho các tính năng collaboration sau này.
+**Về mặt triển khai**, chương đã xây dựng hoàn chỉnh các thành phần sau:
+
+- **AuthModule** với hai luồng nghiệp vụ chính: Register (kiểm tra trùng email → hash mật khẩu bằng bcrypt với salt rounds → tạo user → cấp token) và Login (tìm user → so sánh mật khẩu → cấp token). Cả hai luồng đều tuân thủ các nguyên tắc bảo mật quan trọng như không lưu mật khẩu dạng plain text và thông báo lỗi không tiết lộ sự tồn tại của email.
+- **JwtStrategy** kế thừa từ PassportStrategy, đóng vai trò cầu nối giữa thư viện Passport.js và hệ sinh thái NestJS — tự động trích xuất token từ Authorization header, verify chữ ký số, kiểm tra thời hạn, và gắn thông tin user vào `request.user`.
+- **JwtAuthGuard** kết hợp decorator `@UseGuards()` ở cấp class hoặc cấp method, cung cấp cơ chế bảo vệ route linh hoạt. Khi được đăng ký là `APP_GUARD`, guard áp dụng chiến lược "secure by default" — mọi endpoint đều yêu cầu xác thực trừ khi được đánh dấu `@Public()`.
+- **Custom Decorator `@CurrentUser()`** sử dụng `createParamDecorator()` để trích xuất thông tin user hiện tại, thay thế cách truy cập trực tiếp `request.user` — giúp mã nguồn controller biểu đạt đúng ý định (declarative) và giảm sự phụ thuộc vào object request của Express.
+- **Token Blacklist** giải quyết hạn chế cố hữu của JWT stateless bằng bảng `InvalidatedToken`, đảm bảo token bị thu hồi ngay khi user logout thay vì chờ hết hạn tự nhiên.
+
+**Về mặt kiến trúc**, các thành phần trên phối hợp theo đúng Request Lifecycle của NestJS: Guard chặn request trước khi đến Controller, Strategy xác thực token và trả về user identity, Decorator trích xuất dữ liệu cần thiết, và Service thực thi logic nghiệp vụ với userId đã được xác thực. Mô hình này tuân thủ nguyên lý Single Responsibility Principle — mỗi thành phần chỉ đảm nhận một trách nhiệm duy nhất — và nguyên lý DRY (Don't Repeat Yourself) — logic xác thực được tập trung tại một điểm thay vì lặp lại ở từng controller.
+
+Toàn bộ kiến trúc bảo mật được xây dựng trong chương này tạo nền tảng vững chắc cho các tính năng cộng tác ở những chương tiếp theo: khi user tạo Task, tham gia Project, hay gửi Comment, hệ thống luôn biết chính xác **ai** đang thực hiện hành động đó và **liệu** họ có đủ quyền hay không.
