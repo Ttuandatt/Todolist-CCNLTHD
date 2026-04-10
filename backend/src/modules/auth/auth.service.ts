@@ -132,27 +132,39 @@ export class AuthService {
       where: { token: dto.refreshToken },
     });
 
-    // Nếu không tìm thấy → token không tồn tại hoặc đã bị thu hồi
-    if (
-      !storedToken ||
-      storedToken.revokedAt ||
-      storedToken.expiresAt < new Date()
-    ) {
-      throw new UnauthorizedException(
-        'Invalid refresh token or token has expired',
-      );
-    }
-
-    // Bước 2: Verify JWT signature của refresh token
-    try {
-      await this.jwtService.verifyAsync(dto.refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET as string,
-      });
-    } catch {
+    // Không tìm thấy token trong DB
+    if (!storedToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Bước 3: Revoke token cũ
+    // Token đã hết hạn (theo cột expiresAt trong DB)
+    if (storedToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+
+    // Token đã bị revoke trước đó
+    if (storedToken.revokedAt) {
+      throw new UnauthorizedException('Refresh token has been revoked');
+    }
+
+    // Bước 2: Verify chữ ký + hạn sử dụng của JWT refresh token
+    const jwtRefreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
+    if (!jwtRefreshSecret) {
+      throw new Error(
+        'JWT_REFRESH_SECRET is not defined. Set JWT_REFRESH_SECRET in .env or environment.',
+      );
+    }
+
+    try {
+      await this.jwtService.verifyAsync(dto.refreshToken, {
+        secret: jwtRefreshSecret,
+      });
+    } catch (error) {
+      // JWT không hợp lệ hoặc đã hết hạn theo claim exp
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    // Bước 3: Revoke refresh token cũ trong DB
     await this.prisma.refreshToken.update({
       where: { id: storedToken.id },
       data: { revokedAt: new Date() },
@@ -161,7 +173,6 @@ export class AuthService {
     // Bước 4: Tạo access token + refresh token mới
     const tokens = await this.generateTokens(storedToken.userId, '');
 
-    // Bước 5: Trả về tokens
     return tokens;
   }
 
@@ -169,33 +180,28 @@ export class AuthService {
   // LOGOUT — Đăng xuất
   // ══════════════════════════════════════════════════════════════════════════════════════
   async logout(userId: string, accessToken: string) {
-    // Bước 1: Revoke TẤT CẢ refresh tokens của user này
+    // Bước 1: Revoke tất cả refresh tokens còn hiệu lực của user
     await this.prisma.refreshToken.updateMany({
-      // updateMany — cập nhật nhiều records cùng lúc
-      where: { userId: userId, revokedAt: null }, // revokedAt: null = chỉ revoke những token chưa bị revoke
+      where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
 
-    // Bước 2: ═══ TOKEN BLACKLIST ═══
-    // Thêm access token hiện tại vào bảng InvalidatedToken
-    // → Token bị vô hiệu hóa TỨC THÌ, mọi request tiếp theo bị reject 401
-    if (accessToken) {
-      try {
-        // Decode token để lấy thời gian hết hạn (exp)
-        const decoded = this.jwtService.decode(accessToken);
-        await this.prisma.invalidatedToken.create({
-          data: {
-            token: accessToken,
-            expiresAt: new Date(decoded.exp * 1000),
-            // exp là Unix timestamp (giây) → nhân 1000 thành millisecond
-            // Lưu expiresAt để sau này cron job dọn dẹp records đã hết hạn
-            reason: 'LOGOUT',
-          },
-        });
-      } catch {
-        // Nếu decode token thất bại → ignore, không làm gì cả
-      }
+    // Bước 2: Đưa access token hiện tại vào blacklist (InvalidatedToken)
+    // Dùng jwtService.decode để lấy exp (Unix timestamp, giây)
+    const decoded: any = this.jwtService.decode(accessToken) || {};
+    let expiresAt = new Date();
+
+    if (decoded && typeof decoded.exp === 'number') {
+      expiresAt = new Date(decoded.exp * 1000);
     }
+
+    await this.prisma.invalidatedToken.create({
+      data: {
+        token: accessToken,
+        expiresAt,
+        reason: 'LOGOUT',
+      },
+    });
 
     return { message: 'Logout successfully' };
   }

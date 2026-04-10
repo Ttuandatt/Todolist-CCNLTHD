@@ -30,7 +30,10 @@
       "Bash(npm run:*)",
       "Bash(ls:*)",
       "Bash(find 'C:\\\\Users\\\\ACER\\\\Dropbox\\\\My PC \\(LAPTOP-UGP9QJUT\\)\\\\Documents\\\\ITstudies\\\\Todolist-CCNLTHD\\\\backend\\\\src' -name mail* -o -name *mail*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git commit:*)",
+      "Bash(git restore:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

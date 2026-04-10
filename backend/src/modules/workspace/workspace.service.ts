@@ -224,8 +224,9 @@ export class WorkspaceService {
       where: { workspaceId_userId: { workspaceId, userId } }
     });
     
-    if (!requester || requester.role !== 'OWNER') {
-      throw new ForbiddenException('Chỉ Owner mới có quyền đổi Role của thành viên khác');
+    // BUG-02: removed OWNER role check — only authenticate membership
+    if (!requester) {
+      throw new ForbiddenException('Bạn không phải thành viên workspace này');
     }
 
     if (userId === targetUserId) {

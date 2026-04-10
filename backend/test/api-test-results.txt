@@ -1,0 +1,135 @@
+╔══════════════════════════════════════════╗
+║   TodoList Collaboration API Test Suite   ║
+║   v2 — Testing ALL endpoints              ║
+╚══════════════════════════════════════════╝
+Base URL: http://localhost:3333/api/v1
+Test Email: testuser_1774539310706@test.com
+Time: 2026-03-26T15:35:10.706Z
+
+══════════════════════════════════════════
+  AUTH MODULE
+══════════════════════════════════════════
+✅ [Auth] POST /auth/register → 201 | Registered OK (userId: 8ac13a39...)
+✅ [Auth] POST /auth/register (dup) → 409 | Correctly rejected duplicate
+✅ [Auth] POST /auth/login → 200 | Logged in OK
+✅ [Auth] POST /auth/login (wrong pw) → 401 | Correctly rejected
+✅ [Auth] POST /auth/refresh → 200 | Token refreshed
+✅ [Auth] POST /auth/forgot-password → 200 | OK (email sent/simulated)
+✅ [Auth] POST /auth/reset-password (invalid) → 400 | Correctly rejected invalid token
+
+══════════════════════════════════════════
+  USER MODULE
+══════════════════════════════════════════
+✅ [User] GET /users/me → 200 | Profile: testuser_1774539310706@test.com
+✅ [User] PATCH /users/me → 200 | Profile updated
+✅ [User] PATCH /users/me/change-password → 200 | Password changed
+✅ [User] GET /users/me (no token) → 401 | Correctly rejected
+
+══════════════════════════════════════════
+  WORKSPACE MODULE
+══════════════════════════════════════════
+✅ [Workspace] POST /workspaces → 201 | Created ID: be2c3221...
+✅ [Workspace] GET /workspaces → 200 | Found 1 workspaces
+✅ [Workspace] GET /workspaces/:id → 200 | Got detail
+✅ [Workspace] PATCH /workspaces/:id → 200 | Updated
+✅ [Workspace] GET /workspaces/:id/members → 200 | Found 1 members
+✅ [Workspace] POST /workspaces/:id/invite → 201 | Invite sent
+✅ [Workspace] POST /workspaces/accept-invite/:token (invalid) → 404 | Correctly rejected
+✅ [Workspace] PATCH /workspaces/:id/members/:userId → 403 | Status 403: {"success":false,"statusCode":403,"message":"Không thể tự đổ
+
+══════════════════════════════════════════
+  PROJECT MODULE
+══════════════════════════════════════════
+✅ [Project] POST /workspaces/:wsId/projects → 201 | Created ID: fe8d42a9...
+✅ [Project] GET /workspaces/:wsId/projects → 200 | Listed projects
+✅ [Project] GET /projects/:id → 200 | Got detail
+✅ [Project] PATCH /projects/:id → 200 | Updated
+❌ [Project] POST /projects/:id/archive → 201 | {"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b36d3987","name":"Updated Project","descri
+❌ [Project] POST /projects/:id/unarchive → 201 | {"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b36d3987","name":"Updated Project","descri
+✅ [Project] POST /projects/:id/pin → 201 | Pinned
+✅ [Project] POST /projects/:id/unpin → 201 | Unpinned
+✅ [Project] GET /workspaces/:wsId/projects?status=ACTIVE → 200 | Filtered OK
+
+══════════════════════════════════════════
+  TASK MODULE
+══════════════════════════════════════════
+✅ [Task] POST /projects/:projectId/tasks → 201 | Created ID: 0dd7d42a...
+✅ [Task] GET /projects/:projectId/tasks → 200 | Listed tasks
+✅ [Task] GET /tasks/:id → 200 | Got detail
+✅ [Task] PATCH /tasks/:id → 200 | Updated
+✅ [Task] PATCH /tasks/:id/status → 200 | Status → IN_PROGRESS
+✅ [Task] POST /tasks/:id/assign → 201 | Assigned
+✅ [Task] DELETE /tasks/:id/assign/:userId → 200 | Unassigned
+✅ [Task] POST /tasks/:id/subtasks → 201 | Subtask ID: 4af3cd9d...
+✅ [Task] GET /tasks/:id/subtasks → 200 | Listed subtasks
+✅ [Task] PATCH /subtasks/:id/complete → 200 | Toggled
+✅ [Task] DELETE /subtasks/:id → 200 | Deleted subtask
+✅ [Task] GET /projects/:projectId/tasks (filtered) → 200 | Filtered OK
+
+══════════════════════════════════════════
+  CLEANUP + LOGOUT TEST
+══════════════════════════════════════════
+✅ [Task] DELETE /tasks/:id → 200 | Task deleted
+✅ [Project] DELETE /projects/:id → 200 | Project deleted
+✅ [Workspace] DELETE /workspaces/:id → 200 | Workspace deleted
+✅ [Auth] POST /auth/logout → 200 | Logged out
+
+══════════════════════════════════════════
+  SUMMARY
+══════════════════════════════════════════
+Total: 44 | ✅ Passed: 42 | ❌ Failed: 2
+Pass Rate: 95.5%
+
+❌ FAILED TESTS:
+  - [Project] POST /projects/:id/archive: {"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b36d3987","name":"Updated Project","descri
+  - [Project] POST /projects/:id/unarchive: {"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b36d3987","name":"Updated Project","descri
+
+── Detailed Results ──
+┌─────────┬─────────────┬──────────┬──────────────────────────────────────────────┬────────┬──────┬────────────────────────────────────────────────────────────────┐
+│ (index) │ Module      │ Method   │ Endpoint                                     │ Status │ Pass │ Note                                                           │
+├─────────┼─────────────┼──────────┼──────────────────────────────────────────────┼────────┼──────┼────────────────────────────────────────────────────────────────┤
+│ 0       │ 'Auth'      │ 'POST'   │ '/auth/register'                             │ 201    │ '✅' │ 'Registered OK (userId: 8ac13a39...)'                          │
+│ 1       │ 'Auth'      │ 'POST'   │ '/auth/register (dup)'                       │ 409    │ '✅' │ 'Correctly rejected duplicate'                                 │
+│ 2       │ 'Auth'      │ 'POST'   │ '/auth/login'                                │ 200    │ '✅' │ 'Logged in OK'                                                 │
+│ 3       │ 'Auth'      │ 'POST'   │ '/auth/login (wrong pw)'                     │ 401    │ '✅' │ 'Correctly rejected'                                           │
+│ 4       │ 'Auth'      │ 'POST'   │ '/auth/refresh'                              │ 200    │ '✅' │ 'Token refreshed'                                              │
+│ 5       │ 'Auth'      │ 'POST'   │ '/auth/forgot-password'                      │ 200    │ '✅' │ 'OK (email sent/simulated)'                                    │
+│ 6       │ 'Auth'      │ 'POST'   │ '/auth/reset-password (invalid)'             │ 400    │ '✅' │ 'Correctly rejected invalid token'                             │
+│ 7       │ 'User'      │ 'GET'    │ '/users/me'                                  │ 200    │ '✅' │ 'Profile: testuser_1774539310706@test.com'                     │
+│ 8       │ 'User'      │ 'PATCH'  │ '/users/me'                                  │ 200    │ '✅' │ 'Profile updated'                                              │
+│ 9       │ 'User'      │ 'PATCH'  │ '/users/me/change-password'                  │ 200    │ '✅' │ 'Password changed'                                             │
+│ 10      │ 'User'      │ 'GET'    │ '/users/me (no token)'                       │ 401    │ '✅' │ 'Correctly rejected'                                           │
+│ 11      │ 'Workspace' │ 'POST'   │ '/workspaces'                                │ 201    │ '✅' │ 'Created ID: be2c3221...'                                      │
+│ 12      │ 'Workspace' │ 'GET'    │ '/workspaces'                                │ 200    │ '✅' │ 'Found 1 workspaces'                                           │
+│ 13      │ 'Workspace' │ 'GET'    │ '/workspaces/:id'                            │ 200    │ '✅' │ 'Got detail'                                                   │
+│ 14      │ 'Workspace' │ 'PATCH'  │ '/workspaces/:id'                            │ 200    │ '✅' │ 'Updated'                                                      │
+│ 15      │ 'Workspace' │ 'GET'    │ '/workspaces/:id/members'                    │ 200    │ '✅' │ 'Found 1 members'                                              │
+│ 16      │ 'Workspace' │ 'POST'   │ '/workspaces/:id/invite'                     │ 201    │ '✅' │ 'Invite sent'                                                  │
+│ 17      │ 'Workspace' │ 'POST'   │ '/workspaces/accept-invite/:token (invalid)' │ 404    │ '✅' │ 'Correctly rejected'                                           │
+│ 18      │ 'Workspace' │ 'PATCH'  │ '/workspaces/:id/members/:userId'            │ 403    │ '✅' │ 'Status 403: {"success":false,"statusCode":403,"message":"Khô' │
+│ 19      │ 'Project'   │ 'POST'   │ '/workspaces/:wsId/projects'                 │ 201    │ '✅' │ 'Created ID: fe8d42a9...'                                      │
+│ 20      │ 'Project'   │ 'GET'    │ '/workspaces/:wsId/projects'                 │ 200    │ '✅' │ 'Listed projects'                                              │
+│ 21      │ 'Project'   │ 'GET'    │ '/projects/:id'                              │ 200    │ '✅' │ 'Got detail'                                                   │
+│ 22      │ 'Project'   │ 'PATCH'  │ '/projects/:id'                              │ 200    │ '✅' │ 'Updated'                                                      │
+│ 23      │ 'Project'   │ 'POST'   │ '/projects/:id/archive'                      │ 201    │ '❌' │ '{"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b3' │
+│ 24      │ 'Project'   │ 'POST'   │ '/projects/:id/unarchive'                    │ 201    │ '❌' │ '{"success":true,"data":{"id":"fe8d42a9-9e69-4dba-b852-a4c0b3' │
+│ 25      │ 'Project'   │ 'POST'   │ '/projects/:id/pin'                          │ 201    │ '✅' │ 'Pinned'                                                       │
+│ 26      │ 'Project'   │ 'POST'   │ '/projects/:id/unpin'                        │ 201    │ '✅' │ 'Unpinned'                                                     │
+│ 27      │ 'Project'   │ 'GET'    │ '/workspaces/:wsId/projects?status=ACTIVE'   │ 200    │ '✅' │ 'Filtered OK'                                                  │
+│ 28      │ 'Task'      │ 'POST'   │ '/projects/:projectId/tasks'                 │ 201    │ '✅' │ 'Created ID: 0dd7d42a...'                                      │
+│ 29      │ 'Task'      │ 'GET'    │ '/projects/:projectId/tasks'                 │ 200    │ '✅' │ 'Listed tasks'                                                 │
+│ 30      │ 'Task'      │ 'GET'    │ '/tasks/:id'                                 │ 200    │ '✅' │ 'Got detail'                                                   │
+│ 31      │ 'Task'      │ 'PATCH'  │ '/tasks/:id'                                 │ 200    │ '✅' │ 'Updated'                                                      │
+│ 32      │ 'Task'      │ 'PATCH'  │ '/tasks/:id/status'                          │ 200    │ '✅' │ 'Status → IN_PROGRESS'                                         │
+│ 33      │ 'Task'      │ 'POST'   │ '/tasks/:id/assign'                          │ 201    │ '✅' │ 'Assigned'                                                     │
+│ 34      │ 'Task'      │ 'DELETE' │ '/tasks/:id/assign/:userId'                  │ 200    │ '✅' │ 'Unassigned'                                                   │
+│ 35      │ 'Task'      │ 'POST'   │ '/tasks/:id/subtasks'                        │ 201    │ '✅' │ 'Subtask ID: 4af3cd9d...'                                      │
+│ 36      │ 'Task'      │ 'GET'    │ '/tasks/:id/subtasks'                        │ 200    │ '✅' │ 'Listed subtasks'                                              │
+│ 37      │ 'Task'      │ 'PATCH'  │ '/subtasks/:id/complete'                     │ 200    │ '✅' │ 'Toggled'                                                      │
+│ 38      │ 'Task'      │ 'DELETE' │ '/subtasks/:id'                              │ 200    │ '✅' │ 'Deleted subtask'                                              │
+│ 39      │ 'Task'      │ 'GET'    │ '/projects/:projectId/tasks (filtered)'      │ 200    │ '✅' │ 'Filtered OK'                                                  │
+│ 40      │ 'Task'      │ 'DELETE' │ '/tasks/:id'                                 │ 200    │ '✅' │ 'Task deleted'                                                 │
+│ 41      │ 'Project'   │ 'DELETE' │ '/projects/:id'                              │ 200    │ '✅' │ 'Project deleted'                                              │
+│ 42      │ 'Workspace' │ 'DELETE' │ '/workspaces/:id'                            │ 200    │ '✅' │ 'Workspace deleted'                                            │
+│ 43      │ 'Auth'      │ 'POST'   │ '/auth/logout'                               │ 200    │ '✅' │ 'Logged out'                                                   │
+└─────────┴─────────────┴──────────┴──────────────────────────────────────────────┴────────┴──────┴────────────────────────────────────────────────────────────────┘
