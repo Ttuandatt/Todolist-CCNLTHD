@@ -29,6 +29,7 @@ export class CreateTaskDto {
   @IsDateString({}, { message: 'Ngày bắt đầu không hợp lệ' })
   @IsOptional()
   startDate?: string;
+  // ex: "2024-06-30T12:00:00.000Z", "2024-03-28"
 
   @IsDateString({}, { message: 'Ngày hết hạn không hợp lệ' })
   @IsOptional()

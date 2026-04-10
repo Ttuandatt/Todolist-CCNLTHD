@@ -256,6 +256,7 @@ describe('UserService', () => {
     // Mock Multer file object
     const mockFile = {
       originalname: 'avatar.png',
+      filename: 'avatar-1234567890.png',
       buffer: Buffer.from('fake image data'),
     } as Express.Multer.File;
 
@@ -272,7 +273,7 @@ describe('UserService', () => {
       expect(result).toEqual(updatedProfile);
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: 'user-001' },
-        data: { avatar: expect.stringContaining('avatar.png') }, // filename chứa tên gốc
+        data: { avatar: 'avatar-1234567890.png' },
         select: expect.objectContaining({ id: true }),
       });
     });

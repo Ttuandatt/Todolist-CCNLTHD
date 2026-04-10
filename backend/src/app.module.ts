@@ -18,6 +18,8 @@ import { TaskModule } from './modules/task/task.module';
 import { EventsModule } from './modules/events/events.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { AttachmentModule } from './modules/attachment/attachment.module';
+import { ReminderModule } from './modules/reminder/reminder.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { NotificationModule } from './modules/notification/notification.module';
     EventsModule,
     CommentModule,
     NotificationModule,
+    AttachmentModule,
+    ReminderModule,
   ],
   providers: [
     {
