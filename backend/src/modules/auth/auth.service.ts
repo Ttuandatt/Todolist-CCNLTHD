@@ -28,7 +28,7 @@ export class AuthService {
     private prisma: PrismaService,
     private mailService: MailService,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   // ══════════════════════════════════════════════════════════════════════════════════════
   // REGISTER — Đăng ký tài khoản mới
@@ -290,8 +290,10 @@ export class AuthService {
     // 'sub' = subject — convention của JWT spec, đại diện cho "ai sở hữu token này"
 
     // Tạo 2 token song song bằng Promise.all (nhanh hơn tạo tuần tự)
+    // Lấy secret từ ConfigService
     const jwtSecret = this.config.get<string>('JWT_SECRET');
     const jwtRefreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
+    // Kiểm tra nếu thiếu cấu hình thì báo lỗi rõ ràng thay vì để crash ngầm
     if (!jwtSecret || !jwtRefreshSecret) {
       throw new Error(
         'JWT secrets are not defined. Set JWT_SECRET and JWT_REFRESH_SECRET in .env or environment.',
