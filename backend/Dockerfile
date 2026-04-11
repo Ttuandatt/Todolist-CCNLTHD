@@ -36,9 +36,13 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+# Prisma 7 loads datasource.url from prisma.config.ts, so it must exist at runtime
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-# Create a simple entrypoint script to run migrations before starting
-RUN echo '#!/bin/sh\nnpx prisma migrate deploy\nnpm run start:prod' > /app/entrypoint.sh && \
+# Create a simple entrypoint script to run migrations before starting.
+# NOTE: BusyBox `echo` in Alpine does not interpret `\n`, so we use `printf`
+# to make sure real newlines (and a proper shebang line) end up in the file.
+RUN printf '#!/bin/sh\nset -e\nnpx prisma migrate deploy\nexec npm run start:prod\n' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 # Expose the application port
